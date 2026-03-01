@@ -1,6 +1,6 @@
 # Buscador Resultados Controladores 2025
 
-Herramienta no oficial diseñada para facilitar la consulta y el análisis del ranking y los resultados provisionales de la Fase 1 de la convocatoria externa para la selección de Controladores de Tránsito Aéreo de Enaire 2025.
+Herramienta no oficial diseñada para facilitar la consulta y el análisis del ranking de la convocatoria externa para la selección de Controladores de Tránsito Aéreo de Enaire 2025.
 
 Este proyecto permite la lectura rápida mediante filtros por sede o estado de la candidatura, y provee una pantalla de métricas y estadísticas de asistencia.
 
