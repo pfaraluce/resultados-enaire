@@ -19,7 +19,8 @@ export interface Candidate {
   ranking?: number;
 }
 
-const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRGCk1vz2oHVRJ0C_NPEg4KuE3iWJZFYO0u3LZ5-bbY5wdy5Zn4fE5lN_QyNI8ACo1f-429O-zBR2gX/pub?output=csv';
+// Load from Vite define config (process.env.CSV_URL) or default fallback
+const CSV_URL = process.env.CSV_URL;
 
 const ALL_COLUMNS: { key: keyof Candidate; label: string }[] = [
   { key: 'APELLIDOS Y NOMBRE', label: 'Nombre' },
