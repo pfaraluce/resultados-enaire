@@ -1,20 +1,51 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Buscador Resultados Controladores 2025
 
-# Run and deploy your AI Studio app
+Herramienta no oficial diseñada para facilitar la consulta y el análisis del ranking y los resultados provisionales de la Fase 1 de la convocatoria externa para la selección de Controladores de Tránsito Aéreo de Enaire 2025.
 
-This contains everything you need to run your app locally.
+Este proyecto permite la lectura rápida mediante filtros por sede o estado de la candidatura, y provee una pantalla de métricas y estadísticas de asistencia.
 
-View your app in AI Studio: https://ai.studio/apps/352d0323-33e7-456e-b350-66f2b4caa067
+## Características
 
-## Run Locally
+- Búsqueda rápida de candidatos por apellidos o nombre
+- Filtros por sede de examen y estado de la candidatura (Apto/No Apto/No Presentado)
+- Ordenación por diferentes métricas (Ranking, Conocimientos, Test de inglés...)
+- Dashboard con estadísticas y porcentaje de aprobados y presentados
 
-**Prerequisites:**  Node.js
+## Tecnologías Utilizadas
 
+Este proyecto es una SPA (Single Page Application) construida con las siguientes herramientas modernas:
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+- **React 19** + **Vite**
+- **TypeScript**
+- **Tailwind CSS 4** para diseño e interfaz responsiva
+- **Lucide React** para los iconos
+- **Motion (framer-motion)** para animaciones de interfaz
+- **Recharts** para componentes de datos estadísticos
+- **PapaParse** para lectura asíncrona de los datos en formato CSV
+
+## Instalación y Desarrollo Local
+
+**Requisitos previos:** Node.js (v18+)
+
+1. Clona el repositorio e instala las dependencias:
+   ```bash
+   npm install
+   ```
+
+2. Arranca el entorno de desarrollo local:
+   ```bash
+   npm run dev
+   ```
+
+El servidor local arranca en `http://localhost:3000`.
+
+## Scripts Útiles
+
+* `npm run dev` - Arranca el entorno local.
+* `npm run build` - Transpila (TypeScript a JavaScript) y minifica el código a la carpeta `dist`, listo para producción.
+* `npm run preview` - Previsualización del servidor de producción local.
+* `npm run lint` - Chequeo estático de TypeScript (sin emisión).
+
+## Origen de los datos
+
+Este proyecto lee un documento CSV con los resultados originales expuestos públicamente. La aplicación no tiene vinculación oficial con Enaire ni modifica los resultados presentados. Para información oficial vinculante y posibles reclamaciones, consulte siempre la Sede Electrónica de Enaire.
