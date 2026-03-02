@@ -103,7 +103,8 @@ export default function Statistics({ data }: StatisticsProps) {
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       const rowData = payload[0]?.payload;
-      const hasPassRate = rowData && '% Aprobados' in rowData;
+      const alreadyInPayload = payload.some((e: any) => e.name === '% Aprobados');
+      const hasPassRate = rowData && '% Aprobados' in rowData && !alreadyInPayload;
       return (
         <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 p-3 rounded-xl shadow-xl">
           <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-2">{label}</p>
