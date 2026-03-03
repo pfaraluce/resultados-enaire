@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import Papa from 'papaparse';
 import { Search, Filter, ChevronDown, ChevronUp, MapPin, User, Info, Settings2, Trophy, BarChart3, List } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -36,6 +36,7 @@ const ALL_COLUMNS: { key: keyof Candidate; label: string }[] = [
 ];
 
 export default function App() {
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [data, setData] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -51,6 +52,22 @@ export default function App() {
   useEffect(() => {
     setVisibleCount(100);
   }, [searchTerm, sedeFilter, estadoFilter]);
+
+  // Intercept Ctrl+F to focus the search input
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault();
+        setView('buscador');
+        setTimeout(() => {
+          searchInputRef.current?.focus();
+          searchInputRef.current?.select();
+        }, 0);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -272,8 +289,9 @@ export default function App() {
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                     <input
+                      ref={searchInputRef}
                       type="text"
-                      placeholder="Escriba apellidos o nombre..."
+                      placeholder="Escriba apellidos o nombre... (Ctrl+F)"
                       className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-lg focus:ring-2 focus:ring-[#0099cc] focus:border-transparent transition-all outline-none text-sm"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
