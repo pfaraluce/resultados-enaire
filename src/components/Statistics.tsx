@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { Candidate } from '../App';
+import { PhaseConfig } from '../phaseConfig';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell, ComposedChart, Line
@@ -8,22 +9,27 @@ import { Users, UserCheck, UserX, Award, Percent, MapPin, Calendar } from 'lucid
 
 interface StatisticsProps {
   data: Candidate[];
+  phase: PhaseConfig;
 }
 
-export default function Statistics({ data }: StatisticsProps) {
+export default function Statistics({ data, phase }: StatisticsProps) {
   const stats = useMemo(() => {
     const convocados = data.length;
     
+    const scoreCol = phase.scoreColumn;
+    const statusCol = phase.statusColumn;
+
     const isPresentado = (d: Candidate) => {
-      const estado = d['ESTADO PROVISIONAL']?.trim().toUpperCase();
-      const totalF1 = d['TOTAL FASE 1']?.trim();
-      return (totalF1 && totalF1 !== '---' && totalF1 !== '#N/A' && totalF1 !== '') || 
+      const estado = statusCol ? d[statusCol]?.trim().toUpperCase() : '';
+      const totalScore = scoreCol ? d[scoreCol]?.trim() : '';
+      return (totalScore && totalScore !== '---' && totalScore !== '#N/A' && totalScore !== '') || 
              estado === 'APTO/A' || 
              estado === 'NO APTO/A';
     };
 
     const isAprobado = (d: Candidate) => {
-      return d['ESTADO PROVISIONAL']?.trim().toUpperCase() === 'APTO/A';
+      if (!statusCol) return false;
+      return d[statusCol]?.trim().toUpperCase() === 'APTO/A';
     };
 
     const presentadosData = data.filter(isPresentado);

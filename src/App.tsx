@@ -3,48 +3,28 @@ import Papa from 'papaparse';
 import { Search, Filter, ChevronDown, ChevronUp, MapPin, User, Info, Settings2, Trophy, BarChart3, List } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Statistics from './components/Statistics';
+import { detectPhase, PhaseConfig } from './phaseConfig';
 
+// Generic candidate record — fields vary per phase CSV.
 export interface Candidate {
-  IDENTIFICADOR: string;
-  'APELLIDOS Y NOMBRE': string;
-  'DIA EXAMEN': string;
-  'SEDE DE EXAMEN': string;
-  'AULA/SALA': string;
-  'CONOCIMIENTOS GENERALES': string;
-  'CONOCIMIENTOS IDIOMA INGLÉS': string;
-  'APTITUDES': string;
-  'PERSONALIDAD': string;
-  'TOTAL FASE 1': string;
-  'ESTADO PROVISIONAL': string;
+  [key: string]: any;
   ranking?: number;
 }
 
 // Load from Vite define config (process.env.CSV_URL) or default fallback
 const CSV_URL = process.env.CSV_URL;
 
-const ALL_COLUMNS: { key: keyof Candidate; label: string }[] = [
-  { key: 'APELLIDOS Y NOMBRE', label: 'Nombre' },
-  { key: 'SEDE DE EXAMEN', label: 'Sede' },
-  { key: 'TOTAL FASE 1', label: 'Total F1' },
-  { key: 'ESTADO PROVISIONAL', label: 'Estado' },
-  { key: 'DIA EXAMEN', label: 'Día' },
-  { key: 'AULA/SALA', label: 'Aula' },
-  { key: 'CONOCIMIENTOS GENERALES', label: 'C. Grales' },
-  { key: 'CONOCIMIENTOS IDIOMA INGLÉS', label: 'Inglés' },
-  { key: 'APTITUDES', label: 'Aptitudes' },
-  { key: 'PERSONALIDAD', label: 'Pers.' },
-];
-
 export default function App() {
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [data, setData] = useState<Candidate[]>([]);
+  const [phase, setPhase] = useState<PhaseConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [sedeFilter, setSedeFilter] = useState('Todas');
   const [estadoFilter, setEstadoFilter] = useState('Todos');
-  const [visibleColumns, setVisibleColumns] = useState<(keyof Candidate)[]>(['APELLIDOS Y NOMBRE', 'TOTAL FASE 1', 'ESTADO PROVISIONAL', 'CONOCIMIENTOS GENERALES', 'CONOCIMIENTOS IDIOMA INGLÉS', 'APTITUDES']);
-  const [sortConfig, setSortConfig] = useState<{ key: keyof Candidate | 'ranking'; direction: 'asc' | 'desc' }>({ key: 'ranking', direction: 'asc' });
+  const [visibleColumns, setVisibleColumns] = useState<string[]>([]);
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({ key: 'ranking', direction: 'asc' });
   const [showColumnPicker, setShowColumnPicker] = useState(false);
   const [visibleCount, setVisibleCount] = useState(100);
   const [view, setView] = useState<'buscador' | 'estadisticas'>('buscador');
@@ -80,32 +60,45 @@ export default function App() {
           skipEmptyLines: true,
           complete: (results) => {
             const rawData = results.data as Candidate[];
+            const headers = results.meta.fields || [];
 
-            // Calculate ranking based on Total Fase 1
+            // Auto-detect phase from headers
+            const detectedPhase = detectPhase(headers);
+            setPhase(detectedPhase);
+            setVisibleColumns(detectedPhase.defaultVisibleColumns);
+
+            // Calculate ranking based on the phase's score column
+            const scoreCol = detectedPhase.scoreColumn;
+
             const parseScore = (s: string) => {
               if (!s || s === '---' || s === '#N/A') return -1;
               return parseFloat(s.replace(',', '.'));
             };
 
-            const sortedForRanking = [...rawData].sort((a, b) => {
-              const scoreA = parseScore(a['TOTAL FASE 1']);
-              const scoreB = parseScore(b['TOTAL FASE 1']);
-              return scoreB - scoreA;
-            });
+            let rankedData: Candidate[];
 
-            // Create a map for O(1) rank lookup
-            const rankMap = new Map();
-            sortedForRanking.forEach((item, index) => {
-              const score = parseScore(item['TOTAL FASE 1']);
-              if (score !== -1) {
-                rankMap.set(item, index + 1);
-              }
-            });
+            if (scoreCol) {
+              const sortedForRanking = [...rawData].sort((a, b) => {
+                const scoreA = parseScore(a[scoreCol]);
+                const scoreB = parseScore(b[scoreCol]);
+                return scoreB - scoreA;
+              });
 
-            const rankedData = rawData.map(item => ({
-              ...item,
-              ranking: rankMap.get(item)
-            }));
+              const rankMap = new Map();
+              sortedForRanking.forEach((item, index) => {
+                const score = parseScore(item[scoreCol]);
+                if (score !== -1) {
+                  rankMap.set(item, index + 1);
+                }
+              });
+
+              rankedData = rawData.map(item => ({
+                ...item,
+                ranking: rankMap.get(item)
+              }));
+            } else {
+              rankedData = rawData;
+            }
 
             setData(rankedData);
             setLoading(false);
@@ -130,40 +123,37 @@ export default function App() {
   }, [data]);
 
   const estados = useMemo(() => {
-    const uniqueEstados = Array.from(new Set(data.map(item => item['ESTADO PROVISIONAL']).filter(Boolean)));
+    const statusCol = phase?.statusColumn || '';
+    if (!statusCol) return ['Todos'];
+    const uniqueEstados = Array.from(new Set(data.map(item => item[statusCol]).filter(Boolean)));
     return ['Todos', ...uniqueEstados.sort()];
-  }, [data]);
+  }, [data, phase]);
 
   const filteredData = useMemo(() => {
     const normalize = (str: string) =>
       str.normalize('NFD').replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
     const normalizedSearchWords = normalize(searchTerm).split(/\s+/).filter(word => word.length > 0);
+    const statusCol = phase?.statusColumn || '';
 
     let filtered = data.filter(item => {
       const normalizedName = normalize(item['APELLIDOS Y NOMBRE'] || '').replace(/,/g, ' ');
       const matchesSearch = normalizedSearchWords.every(word => normalizedName.includes(word));
       const matchesSede = sedeFilter === 'Todas' || item['SEDE DE EXAMEN'] === sedeFilter;
-      const matchesEstado = estadoFilter === 'Todos' || item['ESTADO PROVISIONAL'] === estadoFilter;
+      const matchesEstado = estadoFilter === 'Todos' || !statusCol || item[statusCol] === estadoFilter;
       return matchesSearch && matchesSede && matchesEstado;
     });
 
     if (sortConfig) {
       filtered.sort((a, b) => {
         const key = sortConfig.key;
-        const aValueRaw = a[key as keyof Candidate] ?? (key === 'ranking' ? a.ranking : '');
-        const bValueRaw = b[key as keyof Candidate] ?? (key === 'ranking' ? b.ranking : '');
+        const aValueRaw = key === 'ranking' ? a.ranking : a[key];
+        const bValueRaw = key === 'ranking' ? b.ranking : b[key];
 
-        // Define numeric columns for proper numeric sorting
-        const numericColumns = [
-          'TOTAL FASE 1',
-          'CONOCIMIENTOS GENERALES',
-          'CONOCIMIENTOS IDIOMA INGLÉS',
-          'APTITUDES',
-          'ranking'
-        ];
+        // Sortable columns from phase config + ranking are treated as numeric
+        const numericColumns = [...(phase?.sortableColumns || []), 'ranking'];
 
-        if (numericColumns.includes(key as string)) {
+        if (numericColumns.includes(key)) {
           const parse = (val: any) => {
             if (typeof val === 'number') return val;
             if (!val || val === '---' || val === '#N/A') return null;
@@ -174,7 +164,6 @@ export default function App() {
           const numA = parse(aValueRaw);
           const numB = parse(bValueRaw);
 
-          // Always put nulls at the bottom
           if (numA === null && numB === null) return 0;
           if (numA === null) return 1;
           if (numB === null) return -1;
@@ -183,7 +172,6 @@ export default function App() {
           return sortConfig.direction === 'asc' ? numA - numB : numB - numA;
         }
 
-        // Default string sorting with localeCompare for correct accent handling
         const strA = String(aValueRaw || '');
         const strB = String(bValueRaw || '');
 
@@ -194,9 +182,9 @@ export default function App() {
     }
 
     return filtered;
-  }, [data, searchTerm, sedeFilter, estadoFilter, sortConfig]);
+  }, [data, searchTerm, sedeFilter, estadoFilter, sortConfig, phase]);
 
-  const handleSort = (key: keyof Candidate | 'ranking') => {
+  const handleSort = (key: string) => {
     let direction: 'asc' | 'desc' = 'asc';
     if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
       direction = 'desc';
@@ -204,11 +192,16 @@ export default function App() {
     setSortConfig({ key, direction });
   };
 
-  const toggleColumn = (key: keyof Candidate) => {
+  const toggleColumn = (key: string) => {
     setVisibleColumns(prev =>
       prev.includes(key) ? prev.filter(c => c !== key) : [...prev, key]
     );
   };
+
+  // Derived: all columns and visible columns from phase config
+  const allColumns = phase?.columns || [];
+  const scoreColumn = phase?.scoreColumn || '';
+  const statusColumn = phase?.statusColumn || '';
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-black font-sans text-slate-900 dark:text-slate-100 transition-colors duration-200">
@@ -260,7 +253,7 @@ export default function App() {
             <p className="text-red-500 font-medium text-sm">{error}</p>
           </div>
         ) : view === 'estadisticas' ? (
-          <Statistics data={data} />
+          <Statistics data={data} phase={phase!} />
         ) : (
           <>
             {/* Info Card */}
@@ -274,7 +267,7 @@ export default function App() {
                 </div>
                 <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-3 py-1.5 rounded-lg text-xs font-bold">
                   <Info size={14} />
-                  Fase 1 - Resultados Provisionales
+                  {phase?.badgeText || 'Resultados'}
                 </div>
               </div>
             </div>
@@ -314,22 +307,24 @@ export default function App() {
                   </select>
                 </div>
 
-                <div className="md:col-span-3">
-                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                    Estado
-                  </label>
-                  <select
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-lg focus:ring-2 focus:ring-[#0099cc] outline-none text-sm cursor-pointer"
-                    value={estadoFilter}
-                    onChange={(e) => setEstadoFilter(e.target.value)}
-                  >
-                    {estados.map(estado => (
-                      <option key={estado} value={estado}>{estado}</option>
-                    ))}
-                  </select>
-                </div>
+                {statusColumn && (
+                  <div className="md:col-span-3">
+                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
+                      Estado
+                    </label>
+                    <select
+                      className="w-full px-3 py-2 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-lg focus:ring-2 focus:ring-[#0099cc] outline-none text-sm cursor-pointer"
+                      value={estadoFilter}
+                      onChange={(e) => setEstadoFilter(e.target.value)}
+                    >
+                      {estados.map(estado => (
+                        <option key={estado} value={estado}>{estado}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
-                <div className="md:col-span-1 flex justify-end">
+                <div className={`${statusColumn ? 'md:col-span-1' : 'md:col-span-4'} flex justify-end`}>
                   <div className="relative">
                     <button
                       onClick={() => setShowColumnPicker(!showColumnPicker)}
@@ -349,7 +344,7 @@ export default function App() {
                         >
                           <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Columnas Visibles</h3>
                           <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
-                            {ALL_COLUMNS.map(col => (
+                            {allColumns.map(col => (
                               <label key={col.key} className="flex items-center gap-3 cursor-pointer group">
                                 <input
                                   type="checkbox"
@@ -385,16 +380,13 @@ export default function App() {
                   <table className="w-full text-left border-collapse table-fixed">
                     <thead>
                       <tr className="bg-slate-50 dark:bg-zinc-900/50 border-b border-slate-200 dark:border-zinc-800">
-                        <th className="w-16 px-4 py-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                          Pos
-                        </th>
-                        {ALL_COLUMNS.filter(c => visibleColumns.includes(c.key)).map((col) => {
-                          const isSortable = [
-                            'TOTAL FASE 1',
-                            'CONOCIMIENTOS GENERALES',
-                            'CONOCIMIENTOS IDIOMA INGLÉS',
-                            'APTITUDES'
-                          ].includes(col.key);
+                        {scoreColumn && (
+                          <th className="w-16 px-4 py-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                            Pos
+                          </th>
+                        )}
+                        {allColumns.filter(c => visibleColumns.includes(c.key)).map((col) => {
+                          const isSortable = phase?.sortableColumns.includes(col.key) || false;
 
                           return (
                             <th
@@ -424,12 +416,14 @@ export default function App() {
                             layout
                             className="hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-colors"
                           >
-                            <td className="px-3 py-1.5 text-[11px] font-bold text-slate-400 dark:text-slate-500 tabular-nums">
-                              {candidate.ranking ? `${candidate.ranking}.` : '-'}
-                            </td>
-                            {ALL_COLUMNS.filter(c => visibleColumns.includes(c.key)).map(col => (
+                            {scoreColumn && (
+                              <td className="px-3 py-1.5 text-[11px] font-bold text-slate-400 dark:text-slate-500 tabular-nums">
+                                {candidate.ranking ? `${candidate.ranking}.` : '-'}
+                              </td>
+                            )}
+                            {allColumns.filter(c => visibleColumns.includes(c.key)).map(col => (
                               <td key={col.key} className="px-3 py-1.5 text-[11px] truncate">
-                                {col.key === 'ESTADO PROVISIONAL' ? (
+                                {col.key === statusColumn ? (
                                   <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide ${candidate[col.key] === 'APTO/A'
                                     ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
                                     : candidate[col.key] === 'NO APTO/A'
@@ -438,7 +432,7 @@ export default function App() {
                                     }`}>
                                     {candidate[col.key]}
                                   </span>
-                                ) : col.key === 'TOTAL FASE 1' ? (
+                                ) : col.key === scoreColumn ? (
                                   <span className="font-bold text-[#0099cc] tabular-nums">
                                     {candidate[col.key] === '---' ? '-' : candidate[col.key]}
                                   </span>
