@@ -169,6 +169,7 @@ export function detectPhase(headers: string[]): PhaseConfig {
         defaultVisibleColumns: [
           'APELLIDOS Y NOMBRE',
           'TOTAL FASE 1',
+          'ESTADO DEFINITIVO',
           'FECHA EXAMEN FASE 2',
           'HORA INICIO FASE 2',
           'EDIFICIO FASE 2',
