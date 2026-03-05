@@ -71,7 +71,7 @@ export default function App() {
             const scoreCol = detectedPhase.scoreColumn;
 
             const parseScore = (s: string) => {
-              if (!s || s === '---' || s === '#N/A') return -1;
+              if (!s || s === '---' || s === '#N/A' || s === '#N/D') return -1;
               return parseFloat(s.replace(',', '.'));
             };
 
@@ -156,7 +156,7 @@ export default function App() {
         if (numericColumns.includes(key)) {
           const parse = (val: any) => {
             if (typeof val === 'number') return val;
-            if (!val || val === '---' || val === '#N/A') return null;
+            if (!val || val === '---' || val === '#N/A' || val === '#N/D') return null;
             const num = parseFloat(val.toString().replace(',', '.'));
             return isNaN(num) ? null : num;
           };
