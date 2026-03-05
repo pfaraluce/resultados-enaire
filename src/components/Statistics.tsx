@@ -15,16 +15,16 @@ interface StatisticsProps {
 export default function Statistics({ data, phase }: StatisticsProps) {
   const stats = useMemo(() => {
     const convocados = data.length;
-    
+
     const scoreCol = phase.scoreColumn;
     const statusCol = phase.statusColumn;
 
     const isPresentado = (d: Candidate) => {
       const estado = statusCol ? d[statusCol]?.trim().toUpperCase() : '';
       const totalScore = scoreCol ? d[scoreCol]?.trim() : '';
-      return (totalScore && totalScore !== '---' && totalScore !== '#N/A' && totalScore !== '') || 
-             estado === 'APTO/A' || 
-             estado === 'NO APTO/A';
+      return (totalScore && totalScore !== '---' && totalScore !== '#N/A' && totalScore !== '') ||
+        estado === 'APTO/A' ||
+        estado === 'NO APTO/A';
     };
 
     const isAprobado = (d: Candidate) => {
@@ -35,7 +35,7 @@ export default function Statistics({ data, phase }: StatisticsProps) {
     const presentadosData = data.filter(isPresentado);
     const presentados = presentadosData.length;
     const noPresentados = convocados - presentados;
-    
+
     const aprobadosData = data.filter(isAprobado);
     const aprobados = aprobadosData.length;
     const suspensos = presentados - aprobados;
@@ -44,14 +44,14 @@ export default function Statistics({ data, phase }: StatisticsProps) {
     const tasaAprobados = presentados > 0 ? ((aprobados / presentados) * 100).toFixed(1) : '0';
 
     // Por Sedes
-    const sedes = Array.from(new Set(data.map(d => d['SEDE DE EXAMEN']?.trim()).filter(Boolean)));
+    const sedes = Array.from(new Set(data.map(d => d['SEDE DE EXAMEN FASE 1']?.trim()).filter(Boolean)));
     const bySede = sedes.map(sede => {
-      const sData = data.filter(d => d['SEDE DE EXAMEN']?.trim() === sede);
+      const sData = data.filter(d => d['SEDE DE EXAMEN FASE 1']?.trim() === sede);
       const sConvocados = sData.length;
       const sPresentados = sData.filter(isPresentado).length;
       const sAprobados = sData.filter(isAprobado).length;
       const sSuspensos = sPresentados - sAprobados;
-      
+
       return {
         name: sede,
         Convocados: sConvocados,
@@ -63,13 +63,13 @@ export default function Statistics({ data, phase }: StatisticsProps) {
     }).sort((a, b) => b.Convocados - a.Convocados);
 
     // Por Días
-    const dias = Array.from(new Set(data.map(d => d['DIA EXAMEN']?.trim()).filter(Boolean)));
+    const dias = Array.from(new Set(data.map(d => d['DIA EXAMEN FASE 1']?.trim()).filter(Boolean)));
     const byDia = dias.map(dia => {
-      const dData = data.filter(d => d['DIA EXAMEN']?.trim() === dia);
+      const dData = data.filter(d => d['DIA EXAMEN FASE 1']?.trim() === dia);
       const dConvocados = dData.length;
       const dPresentados = dData.filter(isPresentado).length;
       const dAprobados = dData.filter(isAprobado).length;
-      
+
       return {
         name: dia,
         Convocados: dConvocados,
@@ -146,29 +146,29 @@ export default function Statistics({ data, phase }: StatisticsProps) {
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard 
-          title="Total Convocados" 
-          value={stats.convocados.toLocaleString('es-ES')} 
+        <StatCard
+          title="Total Convocados"
+          value={stats.convocados.toLocaleString('es-ES')}
           icon={Users}
           colorClass="bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
         />
-        <StatCard 
-          title="Presentados" 
-          value={stats.presentados.toLocaleString('es-ES')} 
+        <StatCard
+          title="Presentados"
+          value={stats.presentados.toLocaleString('es-ES')}
           subtitle={`${stats.tasaPresentacion}% de asistencia`}
           icon={UserCheck}
           colorClass="bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400"
         />
-        <StatCard 
-          title="Aprobados" 
-          value={stats.aprobados.toLocaleString('es-ES')} 
+        <StatCard
+          title="Aprobados"
+          value={stats.aprobados.toLocaleString('es-ES')}
           subtitle={`${stats.tasaAprobados}% de los presentados`}
           icon={Award}
           colorClass="bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
         />
-        <StatCard 
-          title="No Presentados" 
-          value={stats.noPresentados.toLocaleString('es-ES')} 
+        <StatCard
+          title="No Presentados"
+          value={stats.noPresentados.toLocaleString('es-ES')}
           subtitle={`${(100 - parseFloat(stats.tasaPresentacion)).toFixed(1)}% de absentismo`}
           icon={UserX}
           colorClass="bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"

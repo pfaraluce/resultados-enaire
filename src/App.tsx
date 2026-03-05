@@ -118,7 +118,7 @@ export default function App() {
   }, []);
 
   const sedes = useMemo(() => {
-    const uniqueSedes = Array.from(new Set(data.map(item => item['SEDE DE EXAMEN']).filter(Boolean)));
+    const uniqueSedes = Array.from(new Set(data.map(item => item['SEDE DE EXAMEN FASE 1']).filter(Boolean)));
     return ['Todas', ...uniqueSedes.sort()];
   }, [data]);
 
@@ -139,7 +139,7 @@ export default function App() {
     let filtered = data.filter(item => {
       const normalizedName = normalize(item['APELLIDOS Y NOMBRE'] || '').replace(/,/g, ' ');
       const matchesSearch = normalizedSearchWords.every(word => normalizedName.includes(word));
-      const matchesSede = sedeFilter === 'Todas' || item['SEDE DE EXAMEN'] === sedeFilter;
+      const matchesSede = sedeFilter === 'Todas' || item['SEDE DE EXAMEN FASE 1'] === sedeFilter;
       const matchesEstado = estadoFilter === 'Todos' || !statusCol || item[statusCol] === estadoFilter;
       return matchesSearch && matchesSede && matchesEstado;
     });
@@ -340,21 +340,33 @@ export default function App() {
                           initial={{ opacity: 0, y: 10, scale: 0.95 }}
                           animate={{ opacity: 1, y: 0, scale: 1 }}
                           exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                          className="absolute right-0 mt-2 w-64 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl shadow-xl z-50 p-4"
+                          className="absolute right-0 mt-2 w-72 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl shadow-xl z-50 p-4"
                         >
                           <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Columnas Visibles</h3>
-                          <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
-                            {allColumns.map(col => (
-                              <label key={col.key} className="flex items-center gap-3 cursor-pointer group">
-                                <input
-                                  type="checkbox"
-                                  checked={visibleColumns.includes(col.key)}
-                                  onChange={() => toggleColumn(col.key)}
-                                  className="w-4 h-4 rounded border-slate-300 text-[#0099cc] focus:ring-[#0099cc]"
-                                />
-                                <span className="text-sm text-slate-700 dark:text-slate-300 group-hover:text-[#0099cc] transition-colors">{col.label}</span>
-                              </label>
-                            ))}
+                          <div className="space-y-4 max-h-80 overflow-y-auto pr-1">
+                            {(['other', 'fase1', 'fase2'] as const).map(group => {
+                              const groupCols = allColumns.filter(c => (c.group ?? 'other') === group);
+                              if (groupCols.length === 0) return null;
+                              const groupLabel = group === 'fase1' ? 'Fase 1' : group === 'fase2' ? 'Fase 2' : 'General';
+                              return (
+                                <div key={group}>
+                                  <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1.5 border-b border-slate-100 dark:border-zinc-800 pb-1">{groupLabel}</p>
+                                  <div className="space-y-1.5">
+                                    {groupCols.map(col => (
+                                      <label key={col.key} className="flex items-center gap-3 cursor-pointer group">
+                                        <input
+                                          type="checkbox"
+                                          checked={visibleColumns.includes(col.key)}
+                                          onChange={() => toggleColumn(col.key)}
+                                          className="w-4 h-4 rounded border-slate-300 text-[#0099cc] focus:ring-[#0099cc]"
+                                        />
+                                        <span className="text-sm text-slate-700 dark:text-slate-300 group-hover:text-[#0099cc] transition-colors">{col.label}</span>
+                                      </label>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
                         </motion.div>
                       )}

@@ -4,6 +4,7 @@
 export interface ColumnDef {
   key: string;
   label: string;
+  group?: 'fase1' | 'fase2' | 'other'; // for grouping in column picker
 }
 
 export interface PhaseConfig {
@@ -21,28 +22,20 @@ export interface PhaseConfig {
 // Columns that don't exist in the CSV are silently ignored at render time.
 
 const FASE_1_COLUMNS: ColumnDef[] = [
-  { key: 'APELLIDOS Y NOMBRE', label: 'Nombre' },
-  { key: 'SEDE DE EXAMEN', label: 'Sede' },
-  { key: 'TOTAL FASE 1', label: 'Total F1' },
-  { key: 'ESTADO PROVISIONAL', label: 'Estado' },
-  { key: 'DIA EXAMEN', label: 'Día' },
-  { key: 'AULA/SALA', label: 'Aula' },
-  { key: 'CONOCIMIENTOS GENERALES', label: 'C. Grales' },
-  { key: 'CONOCIMIENTOS IDIOMA INGLÉS', label: 'Inglés' },
-  { key: 'APTITUDES', label: 'Aptitudes' },
-  { key: 'PERSONALIDAD', label: 'Pers.' },
-];
-
-const FASE_1_DEF_COLUMNS: ColumnDef[] = [
-  { key: 'APELLIDOS Y NOMBRE', label: 'Nombre' },
-  { key: 'SEDE DE EXAMEN', label: 'Sede' },
-  { key: 'TOTAL FASE 1', label: 'Total F1' },
-  { key: 'DIA EXAMEN', label: 'Día' },
-  { key: 'AULA/SALA', label: 'Aula' },
-  { key: 'CONOCIMIENTOS GENERALES', label: 'C. Grales' },
-  { key: 'CONOCIMIENTOS IDIOMA INGLÉS', label: 'Inglés' },
-  { key: 'APTITUDES', label: 'Aptitudes' },
-  { key: 'PERSONALIDAD', label: 'Pers.' },
+  { key: 'APELLIDOS Y NOMBRE', label: 'Nombre', group: 'other' },
+  { key: 'SEDE DE EXAMEN FASE 1', label: 'Sede F1', group: 'fase1' },
+  { key: 'DIA EXAMEN FASE 1', label: 'Día F1', group: 'fase1' },
+  { key: 'AULA/SALA FASE 1', label: 'Aula F1', group: 'fase1' },
+  { key: 'CONOCIMIENTOS GENERALES', label: 'C. Grales', group: 'fase1' },
+  { key: 'CONOCIMIENTOS IDIOMA INGLÉS', label: 'Inglés', group: 'fase1' },
+  { key: 'APTITUDES', label: 'Aptitudes', group: 'fase1' },
+  { key: 'PERSONALIDAD', label: 'Pers.', group: 'fase1' },
+  { key: 'TOTAL FASE 1', label: 'Total F1', group: 'fase1' },
+  { key: 'ESTADO DEFINITIVO', label: 'Estado', group: 'other' },
+  { key: 'FECHA EXAMEN FASE 2', label: 'Fecha F2', group: 'fase2' },
+  { key: 'HORA INICIO FASE 2', label: 'Hora F2', group: 'fase2' },
+  { key: 'EDIFICIO FASE 2', label: 'Edificio F2', group: 'fase2' },
+  { key: 'AULA FASE 2', label: 'Aula F2', group: 'fase2' },
 ];
 
 // Helper: check if any header contains a keyword (case-insensitive)
@@ -70,7 +63,7 @@ function filterByHeaders(phase: PhaseConfig, headers: string[]): PhaseConfig {
  *   1. "FASE 3" → check "PROVISIONAL" → Fase 3 Prov / Fase 3 Def
  *   2. "ORAL"   → Fase 3 Prueba A
  *   3. "FASE 2" → check "PROVISIONAL" → Fase 2 Prov / Fase 2 Def
- *   4. "FASE 1" → check "PROVISIONAL" → Fase 1 Prov / Fase 1 Def
+ *   4. "FASE 1" → check "PROVISIONAL" / "DEFINITIVO" → Fase 1 Prov / Fase 1 Def
  *   5. Fallback → show all columns as-is
  */
 export function detectPhase(headers: string[]): PhaseConfig {
@@ -87,9 +80,9 @@ export function detectPhase(headers: string[]): PhaseConfig {
         scoreColumn: 'TOTAL FASE 3',
         statusColumn: 'ESTADO PROVISIONAL',
         columns: [
-          { key: 'APELLIDOS Y NOMBRE', label: 'Nombre' },
-          { key: 'TOTAL FASE 3', label: 'Total F3' },
-          { key: 'ESTADO PROVISIONAL', label: 'Estado' },
+          { key: 'APELLIDOS Y NOMBRE', label: 'Nombre', group: 'other' },
+          { key: 'TOTAL FASE 3', label: 'Total F3', group: 'other' },
+          { key: 'ESTADO PROVISIONAL', label: 'Estado', group: 'other' },
         ],
         defaultVisibleColumns: ['APELLIDOS Y NOMBRE', 'TOTAL FASE 3', 'ESTADO PROVISIONAL'],
         sortableColumns: ['TOTAL FASE 3'],
@@ -102,8 +95,8 @@ export function detectPhase(headers: string[]): PhaseConfig {
         scoreColumn: 'TOTAL FASE 3',
         statusColumn: '',
         columns: [
-          { key: 'APELLIDOS Y NOMBRE', label: 'Nombre' },
-          { key: 'TOTAL FASE 3', label: 'Total F3' },
+          { key: 'APELLIDOS Y NOMBRE', label: 'Nombre', group: 'other' },
+          { key: 'TOTAL FASE 3', label: 'Total F3', group: 'other' },
         ],
         defaultVisibleColumns: ['APELLIDOS Y NOMBRE', 'TOTAL FASE 3'],
         sortableColumns: ['TOTAL FASE 3'],
@@ -120,8 +113,8 @@ export function detectPhase(headers: string[]): PhaseConfig {
       scoreColumn: '',
       statusColumn: 'ESTADO PROVISIONAL',
       columns: [
-        { key: 'APELLIDOS Y NOMBRE', label: 'Nombre' },
-        { key: 'ESTADO PROVISIONAL', label: 'Estado' },
+        { key: 'APELLIDOS Y NOMBRE', label: 'Nombre', group: 'other' },
+        { key: 'ESTADO PROVISIONAL', label: 'Estado', group: 'other' },
       ],
       defaultVisibleColumns: ['APELLIDOS Y NOMBRE', 'ESTADO PROVISIONAL'],
       sortableColumns: [],
@@ -129,7 +122,7 @@ export function detectPhase(headers: string[]): PhaseConfig {
   }
 
   // 3. FASE 2
-  if (hasKeyword(upperHeaders, 'FASE 2')) {
+  if (hasKeyword(upperHeaders, 'FASE 2') && !hasKeyword(upperHeaders, 'FASE 1')) {
     if (isProvisional) {
       return filterByHeaders({
         id: 'fase2-prov',
@@ -138,9 +131,9 @@ export function detectPhase(headers: string[]): PhaseConfig {
         scoreColumn: 'TOTAL FASE 2',
         statusColumn: 'ESTADO PROVISIONAL',
         columns: [
-          { key: 'APELLIDOS Y NOMBRE', label: 'Nombre' },
-          { key: 'TOTAL FASE 2', label: 'Total F2' },
-          { key: 'ESTADO PROVISIONAL', label: 'Estado' },
+          { key: 'APELLIDOS Y NOMBRE', label: 'Nombre', group: 'other' },
+          { key: 'TOTAL FASE 2', label: 'Total F2', group: 'fase2' },
+          { key: 'ESTADO PROVISIONAL', label: 'Estado', group: 'other' },
         ],
         defaultVisibleColumns: ['APELLIDOS Y NOMBRE', 'TOTAL FASE 2', 'ESTADO PROVISIONAL'],
         sortableColumns: ['TOTAL FASE 2'],
@@ -153,8 +146,8 @@ export function detectPhase(headers: string[]): PhaseConfig {
         scoreColumn: 'TOTAL FASE 2',
         statusColumn: '',
         columns: [
-          { key: 'APELLIDOS Y NOMBRE', label: 'Nombre' },
-          { key: 'TOTAL FASE 2', label: 'Total F2' },
+          { key: 'APELLIDOS Y NOMBRE', label: 'Nombre', group: 'other' },
+          { key: 'TOTAL FASE 2', label: 'Total F2', group: 'fase2' },
         ],
         defaultVisibleColumns: ['APELLIDOS Y NOMBRE', 'TOTAL FASE 2'],
         sortableColumns: ['TOTAL FASE 2'],
@@ -162,9 +155,29 @@ export function detectPhase(headers: string[]): PhaseConfig {
     }
   }
 
-  // 4. FASE 1
+  // 4. FASE 1 (con posibles campos de Fase 2 para convocados)
   if (hasKeyword(upperHeaders, 'FASE 1')) {
-    if (isProvisional) {
+    // Definitivos: tiene ESTADO DEFINITIVO (sin PROVISIONAL)
+    if (!isProvisional || hasKeyword(upperHeaders, 'DEFINITIVO')) {
+      return filterByHeaders({
+        id: 'fase1-def',
+        label: 'Fase 1 - Resultados Definitivos',
+        badgeText: 'Fase 1 - Definitivos',
+        scoreColumn: 'TOTAL FASE 1',
+        statusColumn: 'ESTADO DEFINITIVO',
+        columns: FASE_1_COLUMNS,
+        defaultVisibleColumns: [
+          'APELLIDOS Y NOMBRE',
+          'TOTAL FASE 1',
+          'FECHA EXAMEN FASE 2',
+          'HORA INICIO FASE 2',
+          'EDIFICIO FASE 2',
+          'AULA FASE 2',
+        ],
+        sortableColumns: ['TOTAL FASE 1', 'CONOCIMIENTOS GENERALES', 'CONOCIMIENTOS IDIOMA INGLÉS', 'APTITUDES'],
+      }, headers);
+    } else {
+      // Provisionales
       return filterByHeaders({
         id: 'fase1-prov',
         label: 'Fase 1 - Resultados Provisionales',
@@ -172,18 +185,14 @@ export function detectPhase(headers: string[]): PhaseConfig {
         scoreColumn: 'TOTAL FASE 1',
         statusColumn: 'ESTADO PROVISIONAL',
         columns: FASE_1_COLUMNS,
-        defaultVisibleColumns: ['APELLIDOS Y NOMBRE', 'TOTAL FASE 1', 'ESTADO PROVISIONAL', 'CONOCIMIENTOS GENERALES', 'CONOCIMIENTOS IDIOMA INGLÉS', 'APTITUDES'],
-        sortableColumns: ['TOTAL FASE 1', 'CONOCIMIENTOS GENERALES', 'CONOCIMIENTOS IDIOMA INGLÉS', 'APTITUDES'],
-      }, headers);
-    } else {
-      return filterByHeaders({
-        id: 'fase1-def',
-        label: 'Fase 1 - Resultados Definitivos',
-        badgeText: 'Fase 1 - Definitivos',
-        scoreColumn: 'TOTAL FASE 1',
-        statusColumn: '',
-        columns: FASE_1_DEF_COLUMNS,
-        defaultVisibleColumns: ['APELLIDOS Y NOMBRE', 'TOTAL FASE 1', 'CONOCIMIENTOS GENERALES', 'CONOCIMIENTOS IDIOMA INGLÉS', 'APTITUDES'],
+        defaultVisibleColumns: [
+          'APELLIDOS Y NOMBRE',
+          'TOTAL FASE 1',
+          'ESTADO PROVISIONAL',
+          'CONOCIMIENTOS GENERALES',
+          'CONOCIMIENTOS IDIOMA INGLÉS',
+          'APTITUDES',
+        ],
         sortableColumns: ['TOTAL FASE 1', 'CONOCIMIENTOS GENERALES', 'CONOCIMIENTOS IDIOMA INGLÉS', 'APTITUDES'],
       }, headers);
     }
@@ -192,7 +201,7 @@ export function detectPhase(headers: string[]): PhaseConfig {
   // 5. Fallback: unknown phase, show all columns
   const fallbackColumns = headers
     .filter(h => h.trim())
-    .map(h => ({ key: h.trim(), label: h.trim() }));
+    .map(h => ({ key: h.trim(), label: h.trim(), group: 'other' as const }));
 
   return {
     id: 'unknown',
