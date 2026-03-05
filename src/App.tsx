@@ -3,6 +3,7 @@ import Papa from 'papaparse';
 import { Search, Filter, ChevronDown, ChevronUp, MapPin, User, Info, Settings2, Trophy, BarChart3, List } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Statistics from './components/Statistics';
+import Aulas from './components/Aulas';
 import { detectPhase, PhaseConfig } from './phaseConfig';
 
 // Generic candidate record — fields vary per phase CSV.
@@ -27,7 +28,7 @@ export default function App() {
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({ key: 'ranking', direction: 'asc' });
   const [showColumnPicker, setShowColumnPicker] = useState(false);
   const [visibleCount, setVisibleCount] = useState(100);
-  const [view, setView] = useState<'buscador' | 'estadisticas'>('buscador');
+  const [view, setView] = useState<'buscador' | 'estadisticas' | 'aulas'>('buscador');
 
   useEffect(() => {
     setVisibleCount(100);
@@ -52,6 +53,11 @@ export default function App() {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        if (!CSV_URL) {
+          setError('CSV_URL no está definida. Comprueba el fichero .env y reinicia el servidor.');
+          setLoading(false);
+          return;
+        }
         const response = await fetch(CSV_URL);
         const csvText = await response.text();
 
@@ -236,6 +242,13 @@ export default function App() {
                   <BarChart3 size={16} />
                   <span className="hidden sm:inline">Estadísticas</span>
                 </button>
+                <button
+                  onClick={() => setView('aulas')}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${view === 'aulas' ? 'bg-white dark:bg-zinc-800 text-[#0099cc] shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                >
+                  <MapPin size={16} />
+                  <span className="hidden sm:inline">Aulas</span>
+                </button>
               </div>
             </div>
           </div>
@@ -254,6 +267,8 @@ export default function App() {
           </div>
         ) : view === 'estadisticas' ? (
           <Statistics data={data} phase={phase!} />
+        ) : view === 'aulas' ? (
+          <Aulas data={data} phase={phase!} />
         ) : (
           <>
             {/* Info Card */}
