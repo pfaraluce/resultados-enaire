@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Candidate } from '../App';
 import { PhaseConfig } from '../phaseConfig';
-import { Search, ChevronDown, ChevronRight, Building2, DoorOpen, Users, Bus, Train, Navigation, Info } from 'lucide-react';
+import { Search, ChevronDown, ChevronRight, Building2, DoorOpen, Users, Bus, Train, Navigation, Info, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface AulasProps {
@@ -236,14 +236,31 @@ export default function Aulas({ data, phase }: AulasProps) {
     const dates = useMemo(() => {
         const unique = Array.from(new Set(phaseData.map(c => c[selectedPhase.dateCol]?.trim()).filter(Boolean)));
         return unique.sort((a, b) => {
-            const parse = (d: string) => { const [day, m, y] = d.split('/'); return new Date(`${y}-${m}-${day}`).getTime(); };
+            const parse = (d: string) => { 
+                const [day, m, y] = d.split('/'); 
+                return new Date(Number(y), Number(m) - 1, Number(day)).getTime(); 
+            };
             return parse(a) - parse(b);
         });
     }, [phaseData, selectedPhase]);
 
-    const lastDate = useMemo(() => dates[dates.length - 1] ?? '', [dates]);
+    const defaultDate = useMemo(() => {
+        if (dates.length === 0) return '';
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayTime = today.getTime();
+        
+        const parseDate = (d: string) => { 
+            const [day, m, y] = d.split('/'); 
+            return new Date(Number(y), Number(m) - 1, Number(day)).getTime(); 
+        };
+        
+        const upcoming = dates.find(d => parseDate(d) >= todayTime);
+        return upcoming ?? dates[dates.length - 1];
+    }, [dates]);
+
     const [selectedDate, setSelectedDate] = useState('');
-    const activeDate = dates.includes(selectedDate) ? selectedDate : lastDate;
+    const activeDate = dates.includes(selectedDate) ? selectedDate : defaultDate;
 
     const dayData = useMemo(() =>
         phaseData.filter(c => c[selectedPhase.dateCol]?.trim() === activeDate),
@@ -262,13 +279,19 @@ export default function Aulas({ data, phase }: AulasProps) {
 
     // grouped: outer(sede|'root') → edificio(name|'root') → aula → candidates[]
     const grouped = useMemo(() => {
+        const dataToGroup = searchWords.length > 0 ? phaseData : dayData;
         const outerMap = new Map<string, Map<string, Map<string, Candidate[]>>>();
-        dayData.forEach(c => {
+        dataToGroup.forEach(c => {
             const outer = hasSede ? (c[selectedPhase.sedeCol!]?.trim() || 'Sin sede') : 'root';
             const edificio = hasEdificio
                 ? (isEmpty(c[selectedPhase.edificioCol!], selectedPhase.emptyVal) ? 'Sin edificio' : c[selectedPhase.edificioCol!]?.trim())
                 : 'root';
-            const aula = c[selectedPhase.aulaCol]?.trim() || 'Sin aula';
+            let aula = c[selectedPhase.aulaCol]?.trim() || 'Sin aula';
+            if (searchWords.length > 0) {
+                const dateStr = c[selectedPhase.dateCol]?.trim() || 'Sin fecha';
+                aula = `${aula} (${dateStr})`;
+            }
+
             if (!outerMap.has(outer)) outerMap.set(outer, new Map());
             const edMap = outerMap.get(outer)!;
             if (!edMap.has(edificio)) edMap.set(edificio, new Map());
@@ -276,54 +299,66 @@ export default function Aulas({ data, phase }: AulasProps) {
             if (!aulaMap.has(aula)) aulaMap.set(aula, []);
             aulaMap.get(aula)!.push(c);
         });
+
+        if (searchWords.length > 0) {
+            for (const [outer, edMap] of outerMap.entries()) {
+                for (const [edificio, aulaMap] of edMap.entries()) {
+                    for (const [aula, cands] of aulaMap.entries()) {
+                        const hasMatch = cands.some(cand => {
+                            const name = normalize(cand['APELLIDOS Y NOMBRE'] || '').replace(/,/g, ' ');
+                            return searchWords.every(w => name.includes(w));
+                        });
+                        if (!hasMatch) {
+                            aulaMap.delete(aula);
+                        }
+                    }
+                    if (aulaMap.size === 0) {
+                        edMap.delete(edificio);
+                    }
+                }
+                if (edMap.size === 0) {
+                    outerMap.delete(outer);
+                }
+            }
+        }
+
         outerMap.forEach(edMap => edMap.forEach(aulaMap =>
             aulaMap.forEach((cands, key) =>
                 aulaMap.set(key, [...cands].sort((a, b) => (a.ranking ?? Infinity) - (b.ranking ?? Infinity)))
             )
         ));
         return outerMap;
-    }, [dayData, selectedPhase, hasSede, hasEdificio]);
+    }, [dayData, phaseData, searchWords, selectedPhase, hasSede, hasEdificio]);
 
     // Flat list of all aula keys (outer::edificio::aula) for easy state management
     const allAulaKeys = useMemo(() => {
         const keys: string[] = [];
-        grouped.forEach((edMap, outer) =>
-            edMap.forEach((aulaMap, edificio) =>
-                aulaMap.forEach((_, aula) => keys.push(`${outer}::${edificio}::${aula}`))
-            )
-        );
+        const sortedOuters = Array.from(grouped.keys()).sort((a, b) => a === 'root' ? -1 : a.localeCompare(b, 'es'));
+        sortedOuters.forEach(outer => {
+            const edMap = grouped.get(outer)!;
+            const sortedEds = Array.from(edMap.keys()).sort((a, b) => a.localeCompare(b, 'es'));
+            sortedEds.forEach(edificio => {
+                const aulaMap = edMap.get(edificio)!;
+                const sortedAulas = Array.from(aulaMap.keys()).sort((a, b) => a.localeCompare(b, 'es'));
+                sortedAulas.forEach(aula => {
+                    keys.push(`${outer}::${edificio}::${aula}`);
+                });
+            });
+        });
         return keys;
     }, [grouped]);
 
     // ─── Open state for aulas ──────────────────────────────────────────────────
     const [openAulas, setOpenAulas] = useState<Set<string>>(new Set());
 
-    // When date/phase changes: open only the first aula
+    // When date/phase/search changes: open first aula, or all matches if searching
     useEffect(() => {
-        setOpenAulas(allAulaKeys.length > 0 ? new Set([allAulaKeys[0]]) : new Set());
-    }, [allAulaKeys.join('|')]); // eslint-disable-line react-hooks/exhaustive-deps
-
-    // When search changes: open aulas that have matching students; clear when search empty
-    useEffect(() => {
-        if (searchWords.length === 0) {
-            // Restore: only first aula open
+        if (searchWords.length > 0) {
+            setOpenAulas(new Set(allAulaKeys));
+        } else {
             setOpenAulas(allAulaKeys.length > 0 ? new Set([allAulaKeys[0]]) : new Set());
-            return;
         }
-        const matched = new Set<string>();
-        grouped.forEach((edMap, outer) =>
-            edMap.forEach((aulaMap, edificio) =>
-                aulaMap.forEach((cands, aula) => {
-                    const hasMatch = cands.some(c => {
-                        const name = normalize(c['APELLIDOS Y NOMBRE'] || '').replace(/,/g, ' ');
-                        return searchWords.every(w => name.includes(w));
-                    });
-                    if (hasMatch) matched.add(`${outer}::${edificio}::${aula}`);
-                })
-            )
-        );
-        setOpenAulas(matched);
-    }, [searchWords.join(' '), grouped]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [allAulaKeys.join('|'), searchWords.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const toggleAula = (key: string) =>
         setOpenAulas(prev => { const s = new Set(prev); s.has(key) ? s.delete(key) : s.add(key); return s; });
@@ -362,7 +397,13 @@ export default function Aulas({ data, phase }: AulasProps) {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
                     <input type="text" placeholder="Buscar alumno..." value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
-                        className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-lg focus:ring-2 focus:ring-[#0099cc] focus:border-transparent outline-none text-sm" />
+                        className="w-full pl-9 pr-9 py-2 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-lg focus:ring-2 focus:ring-[#0099cc] focus:border-transparent outline-none text-sm" />
+                    {searchTerm && (
+                        <button onClick={() => setSearchTerm('')} 
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
+                            <X size={15} />
+                        </button>
+                    )}
                 </div>
                 <div className="flex items-center gap-3 flex-wrap">
                     {availablePhases.length > 1 && (
@@ -377,15 +418,22 @@ export default function Aulas({ data, phase }: AulasProps) {
                     )}
                     {dates.length > 1 ? (
                         <div className="flex gap-1.5 flex-wrap">
-                            {dates.map(d => (
-                                <button key={d} onClick={() => setSelectedDate(d)}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${d === activeDate ? 'bg-[#0099cc] text-white border-[#0099cc]' : 'bg-white dark:bg-zinc-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-zinc-700 hover:border-[#0099cc] hover:text-[#0099cc]'}`}>
+                            {dates.map(d => {
+                                const isSearching = searchWords.length > 0;
+                                return (
+                                <button key={d} onClick={() => setSelectedDate(d)} disabled={isSearching}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
+                                        isSearching ? 'bg-slate-50 dark:bg-zinc-900 text-slate-400 dark:text-slate-600 border-slate-200 dark:border-zinc-800 opacity-50 cursor-not-allowed'
+                                        : d === activeDate ? 'bg-[#0099cc] text-white border-[#0099cc]' 
+                                        : 'bg-white dark:bg-zinc-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-zinc-700 hover:border-[#0099cc] hover:text-[#0099cc]'
+                                    }`}>
                                     {d}
                                 </button>
-                            ))}
+                                );
+                            })}
                         </div>
                     ) : (
-                        <span className="text-xs font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-zinc-900 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-zinc-800">{activeDate}</span>
+                        <span className={`text-xs font-bold px-3 py-1.5 rounded-lg border transition-colors ${searchWords.length > 0 ? 'bg-slate-50 dark:bg-zinc-900 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-zinc-800 opacity-50' : 'text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-zinc-900 border-slate-200 dark:border-zinc-800'}`}>{activeDate}</span>
                     )}
                 </div>
             </div>
@@ -441,7 +489,10 @@ export default function Aulas({ data, phase }: AulasProps) {
                         <div className="p-2 rounded-lg bg-[#0099cc]/10"><Building2 size={16} className="text-[#0099cc]" /></div>
                         <div>
                             <h2 className="font-bold text-slate-900 dark:text-slate-100 text-base">Madrid</h2>
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-0.5">{dayData.length} alumnos · {activeDate}</p>
+                            <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-0.5">
+                                {Array.from(grouped.get('root')?.values() ?? []).flatMap(m => Array.from(m.values())).flat().length} alumnos
+                                {searchWords.length === 0 && ` · ${activeDate}`}
+                            </p>
                         </div>
                     </div>
                     <div className="p-4 space-y-5">
@@ -467,7 +518,9 @@ export default function Aulas({ data, phase }: AulasProps) {
 
             <p className="text-center text-[10px] text-slate-400 dark:text-slate-500">
                 <Users size={11} className="inline mr-1" />
-                {dayData.length} alumnos convocados el {activeDate} · {selectedPhase.label}
+                {searchWords.length > 0
+                    ? `${Array.from(grouped.values()).flatMap(edMap => Array.from(edMap.values()).flatMap(aulaMap => Array.from(aulaMap.values()))).flat().length} coincidencias · ${selectedPhase.label}`
+                    : `${dayData.length} alumnos convocados el ${activeDate} · ${selectedPhase.label}`}
             </p>
         </div>
     );

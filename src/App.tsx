@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import Papa from 'papaparse';
-import { Search, Filter, ChevronDown, ChevronUp, MapPin, User, Info, Settings2, Trophy, BarChart3, List } from 'lucide-react';
+import { Search, Filter, ChevronDown, ChevronUp, MapPin, User, Info, Settings2, Trophy, BarChart3, List, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Statistics from './components/Statistics';
 import Aulas from './components/Aulas';
@@ -294,16 +294,25 @@ export default function App() {
                   <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
                     Buscar Candidato
                   </label>
-                  <div className="relative">
+                  <div className="relative flex items-center">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                     <input
                       ref={searchInputRef}
                       type="text"
                       placeholder="Escriba apellidos o nombre... (Ctrl+F)"
-                      className="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-lg focus:ring-2 focus:ring-[#0099cc] focus:border-transparent transition-all outline-none text-sm"
+                      className="w-full pl-10 pr-10 py-2 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-lg focus:ring-2 focus:ring-[#0099cc] focus:border-transparent transition-all outline-none text-sm"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                     />
+                    {searchTerm && (
+                      <button
+                        onClick={() => { setSearchTerm(''); searchInputRef.current?.focus(); }}
+                        className="absolute right-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                        aria-label="Borrar búsqueda"
+                      >
+                        <X size={16} />
+                      </button>
+                    )}
                   </div>
                 </div>
 
