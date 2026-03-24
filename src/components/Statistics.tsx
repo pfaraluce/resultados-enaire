@@ -224,7 +224,7 @@ export default function Statistics({ data, phase }: StatisticsProps) {
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* KPIs */}
-      <div className={`grid grid-cols-1 md:grid-cols-2 ${isFase1y2 ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-4`}>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Total Convocados"
           value={stats.convocados.toLocaleString('es-ES')}
@@ -243,7 +243,7 @@ export default function Statistics({ data, phase }: StatisticsProps) {
             <StatCard
               title="Aprobados Fase 1"
               value={stats.aprobadosF1.toLocaleString('es-ES')}
-              subtitle={`${stats.presentados > 0 ? ((stats.aprobadosF1 / stats.presentados) * 100).toFixed(1) : '0'}% de los presentados F1`}
+              subtitle={`${stats.presentados > 0 ? ((stats.aprobadosF1 / stats.presentados) * 100).toFixed(1) : '0'}% de los presentados`}
               icon={Award}
               colorClass="bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
             />
@@ -256,21 +256,23 @@ export default function Statistics({ data, phase }: StatisticsProps) {
             />
           </>
         ) : (
-          <StatCard
-            title="Aprobados"
-            value={stats.aprobados.toLocaleString('es-ES')}
-            subtitle={`${stats.tasaAprobados}% de los presentados`}
-            icon={Award}
-            colorClass="bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
-          />
+          <>
+            <StatCard
+              title="Aprobados"
+              value={stats.aprobados.toLocaleString('es-ES')}
+              subtitle={`${stats.tasaAprobados}% de los presentados`}
+              icon={Award}
+              colorClass="bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
+            />
+            <StatCard
+              title="No Presentados"
+              value={stats.noPresentados.toLocaleString('es-ES')}
+              subtitle={`${(100 - parseFloat(stats.tasaPresentacion)).toFixed(1)}% de absentismo`}
+              icon={UserX}
+              colorClass="bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+            />
+          </>
         )}
-        <StatCard
-          title="No Presentados"
-          value={stats.noPresentados.toLocaleString('es-ES')}
-          subtitle={`${(100 - parseFloat(stats.tasaPresentacion)).toFixed(1)}% de absentismo`}
-          icon={UserX}
-          colorClass="bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
-        />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -307,7 +309,7 @@ export default function Statistics({ data, phase }: StatisticsProps) {
         <div className="bg-white dark:bg-zinc-950 rounded-2xl p-6 border border-slate-200 dark:border-zinc-800 shadow-sm lg:col-span-2">
           <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider mb-6 flex items-center gap-2">
             <MapPin size={16} className="text-[#0099cc]" />
-            Resultados por Sede
+            Resultados por Sede{isFase1y2 ? ' — Fase 1' : ''}
           </h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
