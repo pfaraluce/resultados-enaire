@@ -98,9 +98,25 @@ export default function App() {
                 }
               });
 
+              // For fase1y2-prov: also compute a secondary ranking by TOTAL FASE 1 alone
+              let rankF1Map = new Map();
+              if (detectedPhase.id === 'fase1y2-prov') {
+                const sortedByF1 = [...rawData].sort((a, b) => {
+                  const sA = parseScore(a['TOTAL FASE 1']);
+                  const sB = parseScore(b['TOTAL FASE 1']);
+                  return sB - sA;
+                });
+                sortedByF1.forEach((item, index) => {
+                  if (parseScore(item['TOTAL FASE 1']) !== -1) {
+                    rankF1Map.set(item, index + 1);
+                  }
+                });
+              }
+
               rankedData = rawData.map(item => ({
                 ...item,
-                ranking: rankMap.get(item)
+                ranking: rankMap.get(item),
+                rankingF1: rankF1Map.size > 0 ? rankF1Map.get(item) : undefined,
               }));
             } else {
               rankedData = rawData;
@@ -454,7 +470,15 @@ export default function App() {
                           >
                             {scoreColumn && (
                               <td className="px-3 py-1.5 text-[11px] font-bold text-slate-400 dark:text-slate-500 tabular-nums">
-                                {candidate.ranking ? `${candidate.ranking}.` : '-'}
+                                <div className="flex items-center gap-1">
+                                  <span>{candidate.ranking ? `${candidate.ranking}.` : '-'}</span>
+                                  {candidate.ranking && candidate.rankingF1 && (() => {
+                                    const delta = candidate.rankingF1 - candidate.ranking; // positive = moved up
+                                    if (delta === 0) return <span className="text-[9px] font-bold text-slate-400">＝</span>;
+                                    if (delta > 0) return <span className="text-[9px] font-bold text-emerald-500">+{delta}</span>;
+                                    return <span className="text-[9px] font-bold text-rose-500">{delta}</span>;
+                                  })()}
+                                </div>
                               </td>
                             )}
                             {allColumns.filter(c => visibleColumns.includes(c.key)).map(col => (
