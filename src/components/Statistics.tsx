@@ -26,11 +26,11 @@ export default function Statistics({ data, phase }: StatisticsProps) {
 
     // ── Fase 1 helpers ──────────────────────────────────────────────────────
     const isPresentadoF1 = (d: Candidate) => {
-      const est = d['ESTADO DEFINITIVO']?.trim().toUpperCase();
+      const est = d['ESTADO DEFINITIVO FASE 1']?.trim().toUpperCase();
       return est === 'APTO/A' || est === 'NO APTO/A';
     };
     const isAprobadoF1 = (d: Candidate) =>
-      d['ESTADO DEFINITIVO']?.trim().toUpperCase() === 'APTO/A';
+      d['ESTADO DEFINITIVO FASE 1']?.trim().toUpperCase() === 'APTO/A';
 
     // ── Fase 2 helpers (only meaningful in fase1y2-prov) ────────────────────
     const isPresentadoF2 = (d: Candidate) => {
