@@ -4,7 +4,7 @@
 export interface ColumnDef {
   key: string;
   label: string;
-  group?: 'fase1' | 'fase2' | 'other'; // for grouping in column picker
+  group?: 'fase1' | 'fase2' | 'fase3' | 'other'; // for grouping in column picker
 }
 
 export interface PhaseConfig {
@@ -37,9 +37,12 @@ const FASE_1_COLUMNS: ColumnDef[] = [
   { key: 'SEDE FASE 2', label: 'Sede F2', group: 'fase2' },
   { key: 'EDIFICIO FASE 2', label: 'Edificio F2', group: 'fase2' },
   { key: 'AULA FASE 2', label: 'Aula F2', group: 'fase2' },
-  { key: 'ESTADO PROVISIONAL FASE 2', label: 'Estado Prov. F2', group: 'fase2' },
+  { key: 'ESTADO PROVISIONAL FASE 2', label: 'Estado', group: 'fase2' },
+  { key: 'ESTADO DEFINITIVO FASE 2', label: 'Estado', group: 'fase2' },
   { key: 'TOTAL FASE 2', label: 'Total F2', group: 'fase2' },
-  { key: 'F1+F2', label: 'F1+F2', group: 'other' },
+  { key: 'F1+F2', label: 'Total', group: 'other' },
+  { key: 'FECHA FASE 3', label: 'Fecha F3', group: 'fase3' },
+  { key: 'HORA FASE 3A', label: 'Hora F3A', group: 'fase3' },
 ];
 
 // Helper: check if any header contains a keyword (case-insensitive)
@@ -77,29 +80,35 @@ export function detectPhase(headers: string[]): PhaseConfig {
   const hasFase1 = hasKeyword(upperHeaders, 'FASE 1');
   const hasFase2 = hasKeyword(upperHeaders, 'FASE 2');
 
-  // 0. FASE 1 + FASE 2 + PROVISIONAL → resultados combinados F1+F2
-  if (hasFase1 && hasFase2 && isProvisional) {
+  // 0. FASE 1 + FASE 2 (Provisional or Definitivo)
+  if (hasFase1 && hasFase2) {
+    const isActuallyDefinitive = !isProvisional || upperHeaders.includes('ESTADO DEFINITIVO FASE 2');
+    const statusCol = upperHeaders.includes('ESTADO DEFINITIVO FASE 2') 
+      ? 'ESTADO DEFINITIVO FASE 2' 
+      : 'ESTADO PROVISIONAL FASE 2';
+
     return filterByHeaders({
-      id: 'fase1y2-prov',
-      label: 'Fase 2 - Resultados Provisionales',
-      badgeText: 'Fase 2 - Provisionales',
+      id: isActuallyDefinitive ? 'fase1y2-def' : 'fase1y2-prov',
+      label: isActuallyDefinitive ? 'Fase 2 - Resultados Definitivos' : 'Fase 2 - Resultados Provisionales',
+      badgeText: isActuallyDefinitive ? 'Fase 2 - Definitivos' : 'Fase 2 - Provisionales',
       scoreColumn: 'F1+F2',
-      statusColumn: 'ESTADO PROVISIONAL FASE 2',
+      statusColumn: statusCol,
       columns: FASE_1_COLUMNS,
       defaultVisibleColumns: [
         'APELLIDOS Y NOMBRE',
-        'TOTAL FASE 1',
-        'ESTADO DEFINITIVO FASE 1',
-        'TOTAL FASE 2',
-        'ESTADO PROVISIONAL FASE 2',
         'F1+F2',
+        statusCol,
+        'TOTAL FASE 1',
+        'TOTAL FASE 2',
+        'FECHA FASE 3',
+        'HORA FASE 3A',
       ],
       sortableColumns: ['TOTAL FASE 1', 'TOTAL FASE 2', 'F1+F2', 'CONOCIMIENTOS GENERALES', 'CONOCIMIENTOS IDIOMA INGLÉS', 'APTITUDES'],
     }, headers);
   }
 
-  // 1. FASE 3
-  if (hasKeyword(upperHeaders, 'FASE 3')) {
+  // 1. FASE 3 — only when TOTAL FASE 3 is present (not just phase-3 schedule columns like FECHA FASE 3)
+  if (upperHeaders.some(h => h === 'TOTAL FASE 3')) {
     if (isProvisional) {
       return filterByHeaders({
         id: 'fase3-prov',
@@ -183,7 +192,7 @@ export function detectPhase(headers: string[]): PhaseConfig {
     }
   }
 
-  // 4. FASE 1 (con posibles campos de Fase 2 para convocados)
+  // 4. FASE 1 sola
   if (hasFase1) {
     // Definitivos: tiene ESTADO DEFINITIVO (sin PROVISIONAL)
     if (!isProvisional || hasKeyword(upperHeaders, 'DEFINITIVO')) {

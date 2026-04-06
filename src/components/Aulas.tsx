@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Candidate } from '../App';
 import { PhaseConfig } from '../phaseConfig';
-import { Search, ChevronDown, ChevronRight, Building2, DoorOpen, Users, Bus, Train, Navigation, Info, X } from 'lucide-react';
+import { Search, ChevronDown, ChevronRight, Building2, DoorOpen, Users, Bus, Train, Navigation, Info, X, Clock, MapPin } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface AulasProps {
@@ -47,14 +47,19 @@ const VENUE_INFO: Record<string, VenueInfo> = {
 
 // ─── Phase definitions ────────────────────────────────────────────────────────
 
-type AulaPhaseId = 'fase2' | 'fase1';
+type AulaPhaseId = 'fase3' | 'fase2' | 'fase1';
 interface AulaPhase {
     id: AulaPhaseId; label: string;
-    dateCol: string; sedeCol?: string; edificioCol?: string; aulaCol: string;
+    dateCol: string; sedeCol?: string; edificioCol?: string; aulaCol?: string;
     emptyVal: string[];
 }
 
 const AULA_PHASES: AulaPhase[] = [
+    {
+        id: 'fase3', label: 'Fase 3',
+        dateCol: 'FECHA FASE 3',
+        emptyVal: ['#N/D', '#N/A', '---', ''],
+    },
     {
         id: 'fase2', label: 'Fase 2',
         dateCol: 'FECHA EXAMEN FASE 2',
@@ -121,6 +126,66 @@ function VenueCard({ sedeKey }: { sedeKey: string }) {
                     </motion.div>
                 )}
             </AnimatePresence>
+        </div>
+    );
+}
+
+// ─── Fase3VenueInfo ───────────────────────────────────────────────────────────
+
+function Fase3VenueInfo() {
+    return (
+        <div className="space-y-4 mb-6">
+            {/* 3A */}
+            <div className="bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 p-4 rounded-xl shadow-sm space-y-2">
+                <div className="flex justify-between items-start">
+                    <div>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-[#0099cc] mb-1">Fase 3A — Inglés oral</p>
+                        <p className="text-sm font-bold text-slate-800 dark:text-slate-100">Atribord</p>
+                    </div>
+                </div>
+                <div className="flex items-start gap-2 pt-1">
+                    <MapPin size={14} className="text-slate-400 shrink-0 mt-0.5" />
+                    <p className="text-xs text-slate-600 dark:text-slate-300">
+                        Calle de Cristóbal Bordiú nº 35, 28003 MADRID
+                    </p>
+                </div>
+                <div className="pt-1">
+                    <a href="https://maps.google.com/?q=Calle+Cristobal+Bordiu+35+Madrid"
+                        target="_blank" rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0099cc] hover:underline">
+                        <Navigation size={12} />Ver en Google Maps
+                    </a>
+                </div>
+            </div>
+
+            {/* 3B y 3C */}
+            <div className="bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 p-4 rounded-xl shadow-sm space-y-2">
+                <div className="flex justify-between items-start">
+                    <div>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-[#0099cc] mb-1">Fase 3B y 3C</p>
+                        <p className="text-sm font-bold text-slate-800 dark:text-slate-100">CEGOS – Espacio OneNEXT · Torre Picasso</p>
+                    </div>
+                </div>
+                <div className="flex items-start gap-2 pt-1">
+                    <MapPin size={14} className="text-slate-400 shrink-0 mt-0.5" />
+                    <p className="text-xs text-slate-600 dark:text-slate-300">
+                        Plaza Pablo Ruiz Picasso nº 1, recepción planta baja, 28020 MADRID
+                    </p>
+                </div>
+                <div className="flex items-center gap-2 pt-1 border-t border-slate-50 dark:border-zinc-900 mt-2">
+                    <Clock size={14} className="text-amber-500 shrink-0" />
+                    <p className="text-xs font-bold text-amber-600 dark:text-amber-400">
+                        Hora de citación: 8:45 horas
+                    </p>
+                </div>
+                <div className="pt-1">
+                    <a href="https://maps.google.com/?q=Torre+Picasso+Plaza+Pablo+Ruiz+Picasso+1+Madrid"
+                        target="_blank" rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-xs font-bold text-[#0099cc] hover:underline">
+                        <Navigation size={12} />Ver en Google Maps
+                    </a>
+                </div>
+            </div>
         </div>
     );
 }
@@ -217,44 +282,220 @@ function AulaCard({ aulaLabel, candidates, phase, searchWords, open, onToggle }:
     );
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
+// ─── Fase3DayCard ─────────────────────────────────────────────────────────────
 
-export default function Aulas({ data, phase }: AulasProps) {
-    const availablePhases = useMemo<AulaPhase[]>(() =>
-        AULA_PHASES.filter(ap => data.some(c => !isEmpty(c[ap.aulaCol], ap.emptyVal))),
+interface Fase3DayCardProps {
+    date: string;
+    candidates: Candidate[];
+    searchWords: string[];
+    open: boolean;
+    onToggle: () => void;
+}
+
+function Fase3DayCard({ date, candidates, searchWords, open, onToggle }: Fase3DayCardProps) {
+    const filtered = useMemo(() => {
+        if (searchWords.length === 0) return candidates;
+        return candidates.filter(c => {
+            const name = normalize(c['APELLIDOS Y NOMBRE'] || '').replace(/,/g, ' ');
+            return searchWords.every(w => name.includes(w));
+        });
+    }, [candidates, searchWords]);
+
+    return (
+        <div className="border border-slate-200 dark:border-zinc-800 rounded-xl overflow-hidden">
+            <button onClick={onToggle}
+                className="w-full flex items-center justify-between px-4 py-3 bg-slate-50 dark:bg-zinc-900/60 hover:bg-slate-100 dark:hover:bg-zinc-800/60 transition-colors text-left">
+                <div className="flex items-center gap-2">
+                    <DoorOpen size={15} className="text-[#0099cc]" />
+                    <span className="font-semibold text-sm text-slate-800 dark:text-slate-100">{date}</span>
+                    <span className="ml-2 text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-200 dark:bg-zinc-700 dark:text-zinc-400 px-1.5 py-0.5 rounded">
+                        {candidates.length} candidatos
+                    </span>
+                </div>
+                {open ? <ChevronDown size={16} className="text-slate-400 shrink-0" /> : <ChevronRight size={16} className="text-slate-400 shrink-0" />}
+            </button>
+
+            <AnimatePresence initial={false}>
+                {open && (
+                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-white dark:bg-zinc-950 border-b border-slate-100 dark:border-zinc-800">
+                                        <th className="w-12 px-3 py-2 text-[9px] font-bold text-slate-400 uppercase tracking-wider">Pos</th>
+                                        <th className="px-3 py-2 text-[9px] font-bold text-slate-400 uppercase tracking-wider">Nombre</th>
+                                        <th className="w-24 px-3 py-2 text-[9px] font-bold text-slate-400 uppercase tracking-wider">Hora 3A</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50 dark:divide-zinc-900">
+                                    {filtered.length === 0 ? (
+                                        <tr><td colSpan={3} className="px-3 py-4 text-center text-xs text-slate-400">Sin resultados</td></tr>
+                                    ) : filtered.map(c => (
+                                        <tr key={c.IDENTIFICADOR + c['APELLIDOS Y NOMBRE']}
+                                            className="hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-colors">
+                                            <td className="px-3 py-1.5 text-[11px] font-bold text-slate-400 tabular-nums">
+                                                {c.ranking ? `${c.ranking}.` : '-'}
+                                            </td>
+                                            <td className="px-3 py-1.5 text-[11px] font-medium text-slate-800 dark:text-slate-200 truncate max-w-xs">
+                                                {c['APELLIDOS Y NOMBRE'] || '-'}
+                                            </td>
+                                            <td className="px-3 py-1.5 text-[11px] font-bold text-violet-600 dark:text-violet-300 tabular-nums">
+                                                {c['HORA FASE 3A'] && c['HORA FASE 3A'] !== '---' && c['HORA FASE 3A'] !== '#N/D' && c['HORA FASE 3A'] !== '#N/A'
+                                                    ? c['HORA FASE 3A'] : '-'}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+}
+
+// ─── Fase3View ────────────────────────────────────────────────────────────────
+
+function Fase3View({ data, searchWords }: { data: Candidate[]; searchWords: string[] }) {
+    const emptyVals = ['#N/D', '#N/A', '---', ''];
+
+    const fase3Data = useMemo(() =>
+        data.filter(c => !isEmpty(c['FECHA FASE 3'], emptyVals)),
         [data]
     );
 
-    const [selectedPhaseId, setSelectedPhaseId] = useState<AulaPhaseId>(() => availablePhases[0]?.id ?? 'fase2');
-    const selectedPhase = AULA_PHASES.find(p => p.id === selectedPhaseId) ?? AULA_PHASES[0];
-
-    const phaseData = useMemo(() =>
-        data.filter(c => !isEmpty(c[selectedPhase.aulaCol], selectedPhase.emptyVal)),
-        [data, selectedPhase]
-    );
-
     const dates = useMemo(() => {
-        const unique = Array.from(new Set(phaseData.map(c => c[selectedPhase.dateCol]?.trim()).filter(Boolean)));
+        const unique = Array.from(new Set(fase3Data.map(c => c['FECHA FASE 3']?.trim()).filter(Boolean)));
         return unique.sort((a, b) => {
-            const parse = (d: string) => { 
-                const [day, m, y] = d.split('/'); 
-                return new Date(Number(y), Number(m) - 1, Number(day)).getTime(); 
-            };
+            const parse = (d: string) => { const [day, m, y] = d.split('/'); return new Date(Number(y), Number(m) - 1, Number(day)).getTime(); };
             return parse(a) - parse(b);
         });
-    }, [phaseData, selectedPhase]);
+    }, [fase3Data]);
+
+    // Group by date
+    const byDate = useMemo(() => {
+        const map = new Map<string, Candidate[]>();
+        const dataToGroup = searchWords.length > 0 ? fase3Data : fase3Data;
+        dataToGroup.forEach(c => {
+            const date = c['FECHA FASE 3']?.trim() || 'Sin fecha';
+            if (!map.has(date)) map.set(date, []);
+            map.get(date)!.push(c);
+        });
+        // sort each by ranking
+        map.forEach((cands, key) => map.set(key, [...cands].sort((a, b) => (a.ranking ?? Infinity) - (b.ranking ?? Infinity))));
+        return map;
+    }, [fase3Data, searchWords]);
+
+    const visibleDates = useMemo(() => {
+        if (searchWords.length === 0) return dates;
+        return dates.filter(date => {
+            const candidates = byDate.get(date) || [];
+            return candidates.some(c => {
+                const name = normalize(c['APELLIDOS Y NOMBRE'] || '').replace(/,/g, ' ');
+                return searchWords.every(w => name.includes(w));
+            });
+        });
+    }, [dates, byDate, searchWords]);
+
+    const [openCards, setOpenCards] = useState<Set<string>>(new Set());
+
+    useEffect(() => {
+        if (visibleDates.length > 0) setOpenCards(new Set([visibleDates[0]]));
+    }, [visibleDates.join('|')]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    useEffect(() => {
+        if (searchWords.length > 0) setOpenCards(new Set(visibleDates));
+    }, [searchWords.length, visibleDates]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const toggleCard = (key: string) =>
+        setOpenCards(prev => { const s = new Set(prev); s.has(key) ? s.delete(key) : s.add(key); return s; });
+
+    const totalVisible = useMemo(() => {
+        if (searchWords.length === 0) return fase3Data.length;
+        return fase3Data.filter(c => {
+            const name = normalize(c['APELLIDOS Y NOMBRE'] || '').replace(/,/g, ' ');
+            return searchWords.every(w => name.includes(w));
+        }).length;
+    }, [fase3Data, searchWords]);
+
+    if (fase3Data.length === 0) {
+        return (
+            <div className="bg-white dark:bg-zinc-950 rounded-xl border border-slate-200 dark:border-zinc-800 p-12 text-center">
+                <p className="text-slate-400 text-sm">No hay datos de Fase 3 disponibles todavía.</p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-4">
+            {/* Madrid header */}
+            <div className="bg-white dark:bg-zinc-950 rounded-xl border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden">
+                <div className="px-5 py-4 border-b border-slate-100 dark:border-zinc-800 flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-[#0099cc]/10"><Building2 size={16} className="text-[#0099cc]" /></div>
+                    <div>
+                        <h2 className="font-bold text-slate-900 dark:text-slate-100 text-base">Madrid</h2>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mt-0.5">Todas las pruebas de Fase 3</p>
+                    </div>
+                </div>
+                <div className="p-4 space-y-4">
+                    <Fase3VenueInfo />
+                    {visibleDates.map(date => (
+                        <Fase3DayCard
+                            key={date}
+                            date={date}
+                            candidates={byDate.get(date) ?? []}
+                            searchWords={searchWords}
+                            open={openCards.has(date)}
+                            onToggle={() => toggleCard(date)}
+                        />
+                    ))}
+                </div>
+            </div>
+
+            <p className="text-center text-[10px] text-slate-400 dark:text-slate-500">
+                <Users size={11} className="inline mr-1" />
+                {searchWords.length > 0
+                    ? `${totalVisible} coincidencias · Fase 3`
+                    : `${fase3Data.length} candidatos convocados a Fase 3`}
+            </p>
+        </div>
+    );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
+export default function Aulas({ data, phase }: AulasProps) {
+    const availablePhases = useMemo<AulaPhase[]>(() => {
+        return AULA_PHASES.filter(ap => {
+            if (ap.id === 'fase3') return data.some(c => !isEmpty(c['FECHA FASE 3'], ap.emptyVal));
+            return ap.aulaCol ? data.some(c => !isEmpty(c[ap.aulaCol!], ap.emptyVal)) : false;
+        });
+    }, [data]);
+
+    const [selectedPhaseId, setSelectedPhaseId] = useState<AulaPhaseId>(() => availablePhases[0]?.id ?? 'fase2');
+    const selectedPhase = AULA_PHASES.find(p => p.id === selectedPhaseId) ?? AULA_PHASES[1];
+
+    const phaseData = useMemo(() => {
+        if (selectedPhaseId === 'fase3') return [];
+        return data.filter(c => selectedPhase.aulaCol ? !isEmpty(c[selectedPhase.aulaCol!], selectedPhase.emptyVal) : false);
+    }, [data, selectedPhase, selectedPhaseId]);
+
+    const dates = useMemo(() => {
+        if (selectedPhaseId === 'fase3') return [];
+        const unique = Array.from(new Set(phaseData.map(c => c[selectedPhase.dateCol]?.trim()).filter(Boolean)));
+        return unique.sort((a, b) => {
+            const parse = (d: string) => { const [day, m, y] = d.split('/'); return new Date(Number(y), Number(m) - 1, Number(day)).getTime(); };
+            return parse(a) - parse(b);
+        });
+    }, [phaseData, selectedPhase, selectedPhaseId]);
 
     const defaultDate = useMemo(() => {
         if (dates.length === 0) return '';
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        const today = new Date(); today.setHours(0, 0, 0, 0);
         const todayTime = today.getTime();
-        
-        const parseDate = (d: string) => { 
-            const [day, m, y] = d.split('/'); 
-            return new Date(Number(y), Number(m) - 1, Number(day)).getTime(); 
-        };
-        
+        const parseDate = (d: string) => { const [day, m, y] = d.split('/'); return new Date(Number(y), Number(m) - 1, Number(day)).getTime(); };
         const upcoming = dates.find(d => parseDate(d) >= todayTime);
         return upcoming ?? dates[dates.length - 1];
     }, [dates]);
@@ -262,10 +503,10 @@ export default function Aulas({ data, phase }: AulasProps) {
     const [selectedDate, setSelectedDate] = useState('');
     const activeDate = dates.includes(selectedDate) ? selectedDate : defaultDate;
 
-    const dayData = useMemo(() =>
-        phaseData.filter(c => c[selectedPhase.dateCol]?.trim() === activeDate),
-        [phaseData, selectedPhase, activeDate]
-    );
+    const dayData = useMemo(() => {
+        if (selectedPhaseId === 'fase3') return [];
+        return phaseData.filter(c => c[selectedPhase.dateCol]?.trim() === activeDate);
+    }, [phaseData, selectedPhase, activeDate, selectedPhaseId]);
 
     const [searchTerm, setSearchTerm] = useState('');
     const searchWords = useMemo(
@@ -273,12 +514,12 @@ export default function Aulas({ data, phase }: AulasProps) {
         [searchTerm]
     );
 
-    // ─── Grouping ───────────────────────────────────────────────────────────────
+    // ─── Grouping (fase1 / fase2) ─────────────────────────────────────────────
     const hasSede = !!selectedPhase.sedeCol;
     const hasEdificio = !!selectedPhase.edificioCol;
 
-    // grouped: outer(sede|'root') → edificio(name|'root') → aula → candidates[]
     const grouped = useMemo(() => {
+        if (selectedPhaseId === 'fase3') return new Map<string, Map<string, Map<string, Candidate[]>>>();
         const dataToGroup = searchWords.length > 0 ? phaseData : dayData;
         const outerMap = new Map<string, Map<string, Map<string, Candidate[]>>>();
         dataToGroup.forEach(c => {
@@ -286,7 +527,7 @@ export default function Aulas({ data, phase }: AulasProps) {
             const edificio = hasEdificio
                 ? (isEmpty(c[selectedPhase.edificioCol!], selectedPhase.emptyVal) ? 'Sin edificio' : c[selectedPhase.edificioCol!]?.trim())
                 : 'root';
-            let aula = c[selectedPhase.aulaCol]?.trim() || 'Sin aula';
+            let aula = selectedPhase.aulaCol ? (c[selectedPhase.aulaCol]?.trim() || 'Sin aula') : 'Sin aula';
             if (searchWords.length > 0) {
                 const dateStr = c[selectedPhase.dateCol]?.trim() || 'Sin fecha';
                 aula = `${aula} (${dateStr})`;
@@ -308,17 +549,11 @@ export default function Aulas({ data, phase }: AulasProps) {
                             const name = normalize(cand['APELLIDOS Y NOMBRE'] || '').replace(/,/g, ' ');
                             return searchWords.every(w => name.includes(w));
                         });
-                        if (!hasMatch) {
-                            aulaMap.delete(aula);
-                        }
+                        if (!hasMatch) aulaMap.delete(aula);
                     }
-                    if (aulaMap.size === 0) {
-                        edMap.delete(edificio);
-                    }
+                    if (aulaMap.size === 0) edMap.delete(edificio);
                 }
-                if (edMap.size === 0) {
-                    outerMap.delete(outer);
-                }
+                if (edMap.size === 0) outerMap.delete(outer);
             }
         }
 
@@ -328,19 +563,15 @@ export default function Aulas({ data, phase }: AulasProps) {
             )
         ));
         return outerMap;
-    }, [dayData, phaseData, searchWords, selectedPhase, hasSede, hasEdificio]);
+    }, [dayData, phaseData, searchWords, selectedPhase, hasSede, hasEdificio, selectedPhaseId]);
 
-    // Flat list of all aula keys (outer::edificio::aula) for easy state management
     const allAulaKeys = useMemo(() => {
         const keys: string[] = [];
         const sortedOuters = Array.from(grouped.keys()).sort((a, b) => a === 'root' ? -1 : a.localeCompare(b, 'es'));
         sortedOuters.forEach(outer => {
             const edMap = grouped.get(outer)!;
-            const sortedEds = Array.from(edMap.keys()).sort((a, b) => a.localeCompare(b, 'es'));
-            sortedEds.forEach(edificio => {
-                const aulaMap = edMap.get(edificio)!;
-                const sortedAulas = Array.from(aulaMap.keys()).sort((a, b) => a.localeCompare(b, 'es'));
-                sortedAulas.forEach(aula => {
+            Array.from(edMap.keys()).sort((a, b) => a.localeCompare(b, 'es')).forEach(edificio => {
+                Array.from(edMap.get(edificio)!.keys()).sort((a, b) => a.localeCompare(b, 'es')).forEach(aula => {
                     keys.push(`${outer}::${edificio}::${aula}`);
                 });
             });
@@ -348,22 +579,15 @@ export default function Aulas({ data, phase }: AulasProps) {
         return keys;
     }, [grouped]);
 
-    // ─── Open state for aulas ──────────────────────────────────────────────────
     const [openAulas, setOpenAulas] = useState<Set<string>>(new Set());
-
-    // When date/phase/search changes: open first aula, or all matches if searching
     useEffect(() => {
-        if (searchWords.length > 0) {
-            setOpenAulas(new Set(allAulaKeys));
-        } else {
-            setOpenAulas(allAulaKeys.length > 0 ? new Set([allAulaKeys[0]]) : new Set());
-        }
+        if (searchWords.length > 0) setOpenAulas(new Set(allAulaKeys));
+        else setOpenAulas(allAulaKeys.length > 0 ? new Set([allAulaKeys[0]]) : new Set());
     }, [allAulaKeys.join('|'), searchWords.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const toggleAula = (key: string) =>
         setOpenAulas(prev => { const s = new Set(prev); s.has(key) ? s.delete(key) : s.add(key); return s; });
 
-    // Sede/outer expansion
     const outerKeys = useMemo(() => Array.from(grouped.keys()).sort((a, b) => a === 'root' ? -1 : a.localeCompare(b, 'es')), [grouped]);
     const [openOuters, setOpenOuters] = useState<Set<string>>(new Set());
     useEffect(() => { setOpenOuters(new Set(outerKeys)); }, [outerKeys.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -399,8 +623,8 @@ export default function Aulas({ data, phase }: AulasProps) {
                         onChange={e => setSearchTerm(e.target.value)}
                         className="w-full pl-9 pr-9 py-2 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-lg focus:ring-2 focus:ring-[#0099cc] focus:border-transparent outline-none text-sm" />
                     {searchTerm && (
-                        <button onClick={() => setSearchTerm('')} 
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
+                        <button onClick={() => setSearchTerm('')}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
                             <X size={15} />
                         </button>
                     )}
@@ -416,29 +640,35 @@ export default function Aulas({ data, phase }: AulasProps) {
                             ))}
                         </div>
                     )}
-                    {dates.length > 1 ? (
-                        <div className="flex gap-1.5 flex-wrap">
-                            {dates.map(d => {
-                                const isSearching = searchWords.length > 0;
-                                return (
-                                <button key={d} onClick={() => setSelectedDate(d)} disabled={isSearching}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${
-                                        isSearching ? 'bg-slate-50 dark:bg-zinc-900 text-slate-400 dark:text-slate-600 border-slate-200 dark:border-zinc-800 opacity-50 cursor-not-allowed'
-                                        : d === activeDate ? 'bg-[#0099cc] text-white border-[#0099cc]' 
-                                        : 'bg-white dark:bg-zinc-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-zinc-700 hover:border-[#0099cc] hover:text-[#0099cc]'
-                                    }`}>
-                                    {d}
-                                </button>
-                                );
-                            })}
-                        </div>
-                    ) : (
-                        <span className={`text-xs font-bold px-3 py-1.5 rounded-lg border transition-colors ${searchWords.length > 0 ? 'bg-slate-50 dark:bg-zinc-900 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-zinc-800 opacity-50' : 'text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-zinc-900 border-slate-200 dark:border-zinc-800'}`}>{activeDate}</span>
+
+                    {/* Date selector — only for fase1/fase2 */}
+                    {selectedPhaseId !== 'fase3' && (
+                        dates.length > 1 ? (
+                            <div className="flex gap-1.5 flex-wrap">
+                                {dates.map(d => {
+                                    const isSearching = searchWords.length > 0;
+                                    return (
+                                        <button key={d} onClick={() => setSelectedDate(d)} disabled={isSearching}
+                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors ${isSearching ? 'bg-slate-50 dark:bg-zinc-900 text-slate-400 dark:text-slate-600 border-slate-200 dark:border-zinc-800 opacity-50 cursor-not-allowed'
+                                                : d === activeDate ? 'bg-[#0099cc] text-white border-[#0099cc]'
+                                                    : 'bg-white dark:bg-zinc-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-zinc-700 hover:border-[#0099cc] hover:text-[#0099cc]'
+                                                }`}>
+                                            {d}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <span className={`text-xs font-bold px-3 py-1.5 rounded-lg border transition-colors ${searchWords.length > 0 ? 'bg-slate-50 dark:bg-zinc-900 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-zinc-800 opacity-50' : 'text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-zinc-900 border-slate-200 dark:border-zinc-800'}`}>{activeDate}</span>
+                        )
                     )}
                 </div>
             </div>
 
-            {outerKeys.length === 0 ? (
+            {/* Fase 3 view */}
+            {selectedPhaseId === 'fase3' ? (
+                <Fase3View data={data} searchWords={searchWords} />
+            ) : outerKeys.length === 0 ? (
                 <div className="bg-white dark:bg-zinc-950 rounded-xl border border-slate-200 dark:border-zinc-800 p-12 text-center">
                     <p className="text-slate-400 text-sm">No hay aulas para la fecha seleccionada.</p>
                 </div>
@@ -516,12 +746,14 @@ export default function Aulas({ data, phase }: AulasProps) {
                 </div>
             )}
 
-            <p className="text-center text-[10px] text-slate-400 dark:text-slate-500">
-                <Users size={11} className="inline mr-1" />
-                {searchWords.length > 0
-                    ? `${Array.from(grouped.values()).flatMap(edMap => Array.from(edMap.values()).flatMap(aulaMap => Array.from(aulaMap.values()))).flat().length} coincidencias · ${selectedPhase.label}`
-                    : `${dayData.length} alumnos convocados el ${activeDate} · ${selectedPhase.label}`}
-            </p>
+            {selectedPhaseId !== 'fase3' && (
+                <p className="text-center text-[10px] text-slate-400 dark:text-slate-500">
+                    <Users size={11} className="inline mr-1" />
+                    {searchWords.length > 0
+                        ? `${Array.from(grouped.values()).flatMap(edMap => Array.from(edMap.values()).flatMap(aulaMap => Array.from(aulaMap.values()))).flat().length} coincidencias · ${selectedPhase.label}`
+                        : `${dayData.length} alumnos convocados el ${activeDate} · ${selectedPhase.label}`}
+                </p>
+            )}
         </div>
     );
 }

@@ -296,7 +296,7 @@ export default function App() {
                     <a href="https://empleo.enaire.es/empleo" target="blank">Convocatoria externa de controladores 2025 de Enaire</a>
                   </p>
                 </div>
-                <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-3 py-1.5 rounded-lg text-xs font-bold">
+                <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-3 py-1.5 rounded-lg text-xs font-bold shrink-0">
                   <Info size={14} />
                   {phase?.badgeText || 'Resultados'}
                 </div>
@@ -384,10 +384,10 @@ export default function App() {
                         >
                           <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Columnas Visibles</h3>
                           <div className="space-y-4 max-h-80 overflow-y-auto pr-1">
-                            {(['other', 'fase1', 'fase2'] as const).map(group => {
+                            {(['other', 'fase1', 'fase2', 'fase3'] as const).map(group => {
                               const groupCols = allColumns.filter(c => (c.group ?? 'other') === group);
                               if (groupCols.length === 0) return null;
-                              const groupLabel = group === 'fase1' ? 'Fase 1' : group === 'fase2' ? 'Fase 2' : 'General';
+                              const groupLabel = group === 'fase1' ? 'Fase 1' : group === 'fase2' ? 'Fase 2' : group === 'fase3' ? 'Fase 3' : 'General';
                               return (
                                 <div key={group}>
                                   <p className="text-[9px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1.5 border-b border-slate-100 dark:border-zinc-800 pb-1">{groupLabel}</p>
@@ -437,7 +437,9 @@ export default function App() {
                             Pos
                           </th>
                         )}
-                        {allColumns.filter(c => visibleColumns.includes(c.key)).map((col) => {
+                        {visibleColumns.map((colKey) => {
+                          const col = allColumns.find(c => c.key === colKey);
+                          if (!col) return null;
                           const isSortable = phase?.sortableColumns.includes(col.key) || false;
 
                           return (
@@ -481,28 +483,32 @@ export default function App() {
                                 </div>
                               </td>
                             )}
-                            {allColumns.filter(c => visibleColumns.includes(c.key)).map(col => (
-                              <td key={col.key} className="px-3 py-1.5 text-[11px] truncate">
-                                {col.key === statusColumn ? (
-                                  <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide ${candidate[col.key] === 'APTO/A'
-                                    ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
-                                    : candidate[col.key] === 'NO APTO/A'
-                                      ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
-                                      : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400'
-                                    }`}>
-                                    {candidate[col.key]}
-                                  </span>
-                                ) : col.key === scoreColumn ? (
-                                  <span className="font-bold text-[#0099cc] tabular-nums">
-                                    {candidate[col.key] === '---' ? '-' : candidate[col.key]}
-                                  </span>
-                                ) : (
-                                  <span className={col.key === 'APELLIDOS Y NOMBRE' ? 'font-medium text-slate-800 dark:text-slate-200' : 'text-slate-600 dark:text-slate-400'}>
-                                    {candidate[col.key] || '-'}
-                                  </span>
-                                )}
-                              </td>
-                            ))}
+                            {visibleColumns.map((colKey) => {
+                              const col = allColumns.find(c => c.key === colKey);
+                              if (!col) return null;
+                              return (
+                                <td key={col.key} className="px-3 py-1.5 text-[11px] truncate">
+                                  {col.key === statusColumn ? (
+                                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide ${candidate[col.key] === 'APTO/A'
+                                      ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
+                                      : candidate[col.key] === 'NO APTO/A'
+                                        ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                                        : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400'
+                                      }`}>
+                                      {candidate[col.key]}
+                                    </span>
+                                  ) : col.key === scoreColumn ? (
+                                    <span className="font-bold text-[#0099cc] tabular-nums">
+                                      {candidate[col.key] === '---' ? '-' : candidate[col.key]}
+                                    </span>
+                                  ) : (
+                                    <span className={col.key === 'APELLIDOS Y NOMBRE' ? 'font-medium text-slate-800 dark:text-slate-200' : 'text-slate-600 dark:text-slate-400'}>
+                                      {candidate[col.key] || '-'}
+                                    </span>
+                                  )}
+                                </td>
+                              );
+                            })}
                           </motion.tr>
                         ))}
                       </AnimatePresence>
