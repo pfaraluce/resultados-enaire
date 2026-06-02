@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import Papa from 'papaparse';
 import { Search, Filter, ChevronDown, ChevronUp, MapPin, User, Info, Settings2, Trophy, BarChart3, List, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import Statistics from './components/Statistics';
 import Aulas from './components/Aulas';
 import { detectPhase, PhaseConfig } from './phaseConfig';
 
@@ -28,7 +27,7 @@ export default function App() {
   const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' }>({ key: 'ranking', direction: 'asc' });
   const [showColumnPicker, setShowColumnPicker] = useState(false);
   const [visibleCount, setVisibleCount] = useState(100);
-  const [view, setView] = useState<'buscador' | 'estadisticas' | 'aulas'>('buscador');
+  const [view, setView] = useState<'buscador' | 'aulas'>('buscador');
 
   useEffect(() => {
     setVisibleCount(100);
@@ -264,13 +263,6 @@ export default function App() {
                   <span className="hidden sm:inline">Buscador</span>
                 </button>
                 <button
-                  onClick={() => setView('estadisticas')}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${view === 'estadisticas' ? 'bg-white dark:bg-zinc-800 text-[#0099cc] shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-                >
-                  <BarChart3 size={16} />
-                  <span className="hidden sm:inline">Estadísticas</span>
-                </button>
-                <button
                   onClick={() => setView('aulas')}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${view === 'aulas' ? 'bg-white dark:bg-zinc-800 text-[#0099cc] shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
                 >
@@ -293,8 +285,6 @@ export default function App() {
           <div className="bg-white dark:bg-zinc-950 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800 p-20 text-center">
             <p className="text-red-500 font-medium text-sm">{error}</p>
           </div>
-        ) : view === 'estadisticas' ? (
-          <Statistics data={data} phase={phase!} />
         ) : view === 'aulas' ? (
           <Aulas data={data} phase={phase!} />
         ) : (
