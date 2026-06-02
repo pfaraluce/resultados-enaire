@@ -99,6 +99,7 @@ export default function App() {
               });
 
               // For fase1y2-prov: also compute a secondary ranking by TOTAL FASE 1 alone
+              // For fase3a-prov: also compute a secondary ranking by F1+F2 (for comparison delta)
               let rankF1Map = new Map();
               if (detectedPhase.id === 'fase1y2-prov') {
                 const sortedByF1 = [...rawData].sort((a, b) => {
@@ -108,6 +109,17 @@ export default function App() {
                 });
                 sortedByF1.forEach((item, index) => {
                   if (parseScore(item['TOTAL FASE 1']) !== -1) {
+                    rankF1Map.set(item, index + 1);
+                  }
+                });
+              } else if (detectedPhase.id === 'fase3a-prov') {
+                const sortedByF1y2 = [...rawData].sort((a, b) => {
+                  const sA = parseScore(a['F1+F2']);
+                  const sB = parseScore(b['F1+F2']);
+                  return sB - sA;
+                });
+                sortedByF1y2.forEach((item, index) => {
+                  if (parseScore(item['F1+F2']) !== -1) {
                     rankF1Map.set(item, index + 1);
                   }
                 });

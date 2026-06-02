@@ -43,6 +43,10 @@ const FASE_1_COLUMNS: ColumnDef[] = [
   { key: 'F1+F2', label: 'Total', group: 'other' },
   { key: 'FECHA FASE 3', label: 'Fecha F3', group: 'fase3' },
   { key: 'HORA FASE 3A', label: 'Hora F3A', group: 'fase3' },
+  // Phase 3A columns added:
+  { key: 'ESTADO PROVISIONAL FASE 3A', label: 'Estado F3A', group: 'fase3' },
+  { key: 'INGLÉS ORAL', label: 'Inglés Oral', group: 'fase3' },
+  { key: 'F1+F2+F3A', label: 'Total F1+F2+F3A', group: 'fase3' },
 ];
 
 // Helper: check if any header contains a keyword (case-insensitive)
@@ -67,20 +71,43 @@ function filterByHeaders(phase: PhaseConfig, headers: string[]): PhaseConfig {
 /**
  * Detect the current phase from CSV column headers.
  * Sequential logic (highest phase first):
- *   0. "FASE 1" + "FASE 2" + "PROVISIONAL" → Fase 1+2 Provisionales (suma F1+F2)
- *   1. "FASE 3" → check "PROVISIONAL" → Fase 3 Prov / Fase 3 Def
- *   2. "ORAL"   → Fase 3 Prueba A
- *   3. "FASE 2" → check "PROVISIONAL" → Fase 2 Prov / Fase 2 Def
- *   4. "FASE 1" → check "PROVISIONAL" / "DEFINITIVO" → Fase 1 Prov / Fase 1 Def
- *   5. Fallback → show all columns as-is
+ *   0. "FASE 3A"  → check F1+F2+F3A etc. → Fase 3A Provisional
+ *   1. "FASE 1" + "FASE 2" + "PROVISIONAL" → Fase 1+2 Provisionales (suma F1+F2)
+ *   2. "FASE 3" → check "PROVISIONAL" → Fase 3 Prov / Fase 3 Def
+ *   3. "ORAL"   → Fase 3 Prueba A
+ *   4. "FASE 2" → check "PROVISIONAL" → Fase 2 Prov / Fase 2 Def
+ *   5. "FASE 1" → check "PROVISIONAL" / "DEFINITIVO" → Fase 1 Prov / Fase 1 Def
+ *   6. Fallback → show all columns as-is
  */
 export function detectPhase(headers: string[]): PhaseConfig {
   const upperHeaders = headers.map(h => h.toUpperCase().trim());
   const isProvisional = hasKeyword(upperHeaders, 'PROVISIONAL');
   const hasFase1 = hasKeyword(upperHeaders, 'FASE 1');
   const hasFase2 = hasKeyword(upperHeaders, 'FASE 2');
+  const hasFase3A = upperHeaders.includes('F1+F2+F3A') || upperHeaders.includes('ESTADO PROVISIONAL FASE 3A') || upperHeaders.includes('INGLÉS ORAL');
 
-  // 0. FASE 1 + FASE 2 (Provisional or Definitivo)
+  // 0. FASE 3A - Resultados Provisionales (highest priority)
+  if (hasFase3A) {
+    return filterByHeaders({
+      id: 'fase3a-prov',
+      label: 'Fase 3A - Resultados Provisionales',
+      badgeText: 'Fase 3A - Provisional',
+      scoreColumn: 'F1+F2+F3A',
+      statusColumn: 'ESTADO PROVISIONAL FASE 3A',
+      columns: FASE_1_COLUMNS,
+      defaultVisibleColumns: [
+        'APELLIDOS Y NOMBRE',
+        'F1+F2+F3A',
+        'ESTADO PROVISIONAL FASE 3A',
+        'INGLÉS ORAL',
+        'TOTAL FASE 1',
+        'TOTAL FASE 2',
+      ],
+      sortableColumns: ['TOTAL FASE 1', 'TOTAL FASE 2', 'F1+F2', 'F1+F2+F3A', 'INGLÉS ORAL', 'CONOCIMIENTOS GENERALES', 'CONOCIMIENTOS IDIOMA INGLÉS', 'APTITUDES'],
+    }, headers);
+  }
+
+  // 1. FASE 1 + FASE 2 (Provisional or Definitivo)
   if (hasFase1 && hasFase2) {
     const isActuallyDefinitive = !isProvisional || upperHeaders.includes('ESTADO DEFINITIVO FASE 2');
     const statusCol = upperHeaders.includes('ESTADO DEFINITIVO FASE 2') 

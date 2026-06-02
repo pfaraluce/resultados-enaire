@@ -89,8 +89,8 @@ export default function Statistics({ data, phase }: StatisticsProps) {
         { name: 'No Presentados', value: noPresentados, color: '#94a3b8' }
       ];
 
-    // By Sede (Always Phase 1 logic for fase1y2)
-    const sedeCol = isFase1y2 ? 'SEDE DE EXAMEN FASE 1' : 'SEDE DE EXAMEN';
+    // By Sede (Always Phase 1 logic for fase1y2 or fase3a-prov)
+    const sedeCol = (isFase1y2 || phase.id === 'fase3a-prov') ? 'SEDE DE EXAMEN FASE 1' : 'SEDE DE EXAMEN';
     const sedes = Array.from(new Set(data.map(d => d[sedeCol]?.trim()).filter(Boolean)));
     const bySede = sedes.map(sede => {
       const sData = data.filter(d => d[sedeCol]?.trim() === sede);
@@ -107,7 +107,7 @@ export default function Statistics({ data, phase }: StatisticsProps) {
     }).sort((a, b) => b.Convocados - a.Convocados);
 
     // By Day - Phase 1
-    const dayCol1 = isFase1y2 ? 'DIA EXAMEN FASE 1' : 'DIA EXAMEN';
+    const dayCol1 = (isFase1y2 || phase.id === 'fase3a-prov') ? 'DIA EXAMEN FASE 1' : 'DIA EXAMEN';
     const dias1 = Array.from(new Set(data.map(d => d[dayCol1]?.trim()).filter(Boolean)));
     const byDiaF1 = dias1.map(dia => {
       const dData = data.filter(d => d[dayCol1]?.trim() === dia);
