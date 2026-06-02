@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { Candidate } from '../App';
 import { PhaseConfig } from '../phaseConfig';
 import {
@@ -16,6 +16,15 @@ interface StatisticsProps {
 }
 
 export default function Statistics({ data, phase }: StatisticsProps) {
+  const [shouldRenderChart, setShouldRenderChart] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShouldRenderChart(true);
+    }, 150);
+    return () => clearTimeout(timer);
+  }, []);
+
   const stats = useMemo(() => {
     const convocados = data.length;
 
@@ -336,23 +345,32 @@ export default function Statistics({ data, phase }: StatisticsProps) {
           </div>
         </div>
 
-        <div className="h-96">
-          <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={stats.byDiaF1} margin={{ top: 15, right: 15, left: -10, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b', fontWeight: 'bold' }} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(val) => `${val}%`} domain={[0, 100]} />
-              <Tooltip cursor={{ fill: 'rgba(0,0,0,0.02)' }} content={<CustomTooltip />} />
-              <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '11px', fontWeight: 'medium' }} />
-              
-              <Bar name="Aptos C. Grales" dataKey="% C. Grales" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={12} />
-              <Bar name="Aptos Inglés" dataKey="% Inglés" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={12} />
-              <Bar name="Aptos Aptitudes" dataKey="% Aptitudes" fill="#a855f7" radius={[4, 4, 0, 0]} barSize={12} />
-              <Bar name="Aptos Personalidad" dataKey="% Personalidad" fill="#10b981" radius={[4, 4, 0, 0]} barSize={12} />
-              
-              <Line name="Tasa Aprobados F1 Global" type="monotone" dataKey="% Aprobados F1" stroke="#f59e0b" strokeWidth={3.5} dot={{ r: 5, fill: '#f59e0b', strokeWidth: 2, stroke: '#fff' }} />
-            </ComposedChart>
-          </ResponsiveContainer>
+        <div className="h-96 w-full min-w-0">
+          {shouldRenderChart ? (
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+              <ComposedChart data={stats.byDiaF1} margin={{ top: 15, right: 15, left: -10, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b', fontWeight: 'bold' }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(val) => `${val}%`} domain={[0, 100]} />
+                <Tooltip cursor={{ fill: 'rgba(0,0,0,0.02)' }} content={<CustomTooltip />} />
+                <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '11px', fontWeight: 'medium' }} />
+                
+                <Bar name="Aptos C. Grales" dataKey="% C. Grales" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={12} />
+                <Bar name="Aptos Inglés" dataKey="% Inglés" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={12} />
+                <Bar name="Aptos Aptitudes" dataKey="% Aptitudes" fill="#a855f7" radius={[4, 4, 0, 0]} barSize={12} />
+                <Bar name="Aptos Personalidad" dataKey="% Personalidad" fill="#10b981" radius={[4, 4, 0, 0]} barSize={12} />
+                
+                <Line name="Tasa Aprobados F1 Global" type="monotone" dataKey="% Aprobados F1" stroke="#f59e0b" strokeWidth={3.5} dot={{ r: 5, fill: '#f59e0b', strokeWidth: 2, stroke: '#fff' }} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-full w-full flex items-center justify-center bg-slate-50/50 dark:bg-zinc-900/10 border border-slate-100 dark:border-zinc-800 rounded-xl">
+              <div className="flex flex-col items-center gap-3">
+                <div className="w-8 h-8 border-4 border-[#0099cc] border-t-transparent rounded-full animate-spin"></div>
+                <span className="text-xs text-slate-400 font-medium">Cargando gráfico interactivo...</span>
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
