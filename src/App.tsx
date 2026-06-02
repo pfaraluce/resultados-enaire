@@ -251,7 +251,9 @@ export default function App() {
                 <h1 className="text-xl font-bold tracking-tight">
                   Resultados <span className="text-[#0099cc]">Controladores 2025</span>
                 </h1>
-                <p className="text-[10px] uppercase tracking-widest text-slate-500 dark:text-slate-400 font-bold">Consulta No Oficial</p>
+                <p className="text-[10px] uppercase tracking-widest text-slate-400 dark:text-slate-500 font-bold">
+                  Consulta No Oficial
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-4">
@@ -299,26 +301,36 @@ export default function App() {
           <Aulas data={data} phase={phase!} />
         ) : (
           <>
-            {/* Info Card */}
-            <div className="mb-6">
-              <div className="bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 p-4 rounded-xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Origen de datos</p>
-                  <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                    <a href="https://empleo.enaire.es/empleo" target="blank">Convocatoria externa de controladores 2025 de Enaire</a>
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-3 py-1.5 rounded-lg text-xs font-bold shrink-0">
-                  <Info size={14} />
-                  {phase?.badgeText || 'Resultados'}
-                </div>
+            {/* Origen de datos (Discreto, sin recuadro) */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 px-1">
+              <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
+                <Info size={14} className="text-[#0099cc]" />
+                <span className="text-xs">
+                  <span className="font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider text-[9px] mr-1.5">Origen de datos:</span>
+                  <a 
+                    href="https://empleo.enaire.es/empleo" 
+                    target="_blank" 
+                    rel="noreferrer" 
+                    className="font-medium text-slate-600 dark:text-slate-300 hover:text-[#0099cc] hover:underline transition-colors"
+                  >
+                    Convocatoria externa de controladores 2025 (Enaire)
+                  </a>
+                </span>
               </div>
+              {phase && (
+                <div className="flex items-center gap-1.5 self-start sm:self-auto bg-blue-50 dark:bg-blue-950/30 px-2.5 py-0.5 rounded-full border border-blue-100 dark:border-blue-900/10">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#0099cc] animate-pulse" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[#0099cc]">
+                    {phase.label}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Filters Section */}
             <section className="bg-white dark:bg-zinc-950 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800 p-4 mb-6">
               <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-                <div className="md:col-span-5">
+                <div className="md:col-span-9">
                   <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
                     Buscar Candidato
                   </label>
@@ -328,7 +340,7 @@ export default function App() {
                       ref={searchInputRef}
                       type="text"
                       placeholder="Escriba apellidos o nombre... (Ctrl+F)"
-                      className="w-full pl-10 pr-10 py-2 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-lg focus:ring-2 focus:ring-[#0099cc] focus:border-transparent transition-all outline-none text-sm"
+                      className="w-full pl-10 pr-10 py-2 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-lg focus:ring-2 focus:ring-[#0099cc] focus:border-transparent transition-all outline-none text-sm font-medium"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -344,46 +356,15 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="md:col-span-3">
-                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                    Sede
-                  </label>
-                  <select
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-lg focus:ring-2 focus:ring-[#0099cc] outline-none text-sm cursor-pointer"
-                    value={sedeFilter}
-                    onChange={(e) => setSedeFilter(e.target.value)}
-                  >
-                    {sedes.map(sede => (
-                      <option key={sede} value={sede}>{sede}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {statusColumn && (
-                  <div className="md:col-span-3">
-                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">
-                      Estado
-                    </label>
-                    <select
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-lg focus:ring-2 focus:ring-[#0099cc] outline-none text-sm cursor-pointer"
-                      value={estadoFilter}
-                      onChange={(e) => setEstadoFilter(e.target.value)}
-                    >
-                      {estados.map(estado => (
-                        <option key={estado} value={estado}>{estado}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                <div className={`${statusColumn ? 'md:col-span-1' : 'md:col-span-4'} flex justify-end`}>
-                  <div className="relative">
+                <div className="md:col-span-3 flex justify-end">
+                  <div className="relative w-full">
                     <button
                       onClick={() => setShowColumnPicker(!showColumnPicker)}
-                      className={`p-2 rounded-lg border transition-colors ${showColumnPicker ? 'bg-[#0099cc] text-white border-[#0099cc]' : 'bg-white dark:bg-zinc-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-zinc-700 hover:bg-slate-50 dark:hover:bg-zinc-800'}`}
-                      title="Configurar columnas"
+                      className={`w-full py-2 px-4 rounded-lg border transition-all flex items-center justify-center gap-2 text-sm font-bold shadow-sm ${showColumnPicker ? 'bg-[#0099cc] text-white border-[#0099cc]' : 'bg-white dark:bg-zinc-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-zinc-700 hover:bg-slate-50 dark:hover:bg-zinc-800'}`}
+                      title="Configurar filtros y columnas"
                     >
-                      <Settings2 size={20} />
+                      <Filter size={16} />
+                      <span>Filtros y Columnas</span>
                     </button>
 
                     <AnimatePresence>
@@ -394,8 +375,23 @@ export default function App() {
                           exit={{ opacity: 0, y: 10, scale: 0.95 }}
                           className="absolute right-0 mt-2 w-72 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-700 rounded-xl shadow-xl z-50 p-4"
                         >
-                          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Columnas Visibles</h3>
-                          <div className="space-y-4 max-h-80 overflow-y-auto pr-1">
+                          {/* Sede selector */}
+                          <div className="mb-4">
+                            <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1.5">Sede de Examen</label>
+                            <select
+                              className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 rounded-lg outline-none text-xs cursor-pointer font-semibold"
+                              value={sedeFilter}
+                              onChange={(e) => setSedeFilter(e.target.value)}
+                            >
+                              {sedes.map(sede => (
+                                <option key={sede} value={sede}>{sede}</option>
+                              ))}
+                            </select>
+                          </div>
+
+
+                          <h3 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3 border-t border-slate-100 dark:border-zinc-800 pt-3">Columnas Visibles</h3>
+                          <div className="space-y-4 max-h-64 overflow-y-auto pr-1">
                             {(['other', 'fase1', 'fase2', 'fase3'] as const).map(group => {
                               const groupCols = allColumns.filter(c => (c.group ?? 'other') === group);
                               if (groupCols.length === 0) return null;
@@ -425,6 +421,41 @@ export default function App() {
                     </AnimatePresence>
                   </div>
                 </div>
+              </div>
+
+              {/* Suggested Quick Filters Pills */}
+              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-zinc-100/5 dark:border-zinc-900 flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Filtros rápidos:</span>
+                
+                {/* Madrid pill */}
+                <button
+                  onClick={() => setSedeFilter(sedeFilter === 'MADRID' ? 'Todas' : 'MADRID')}
+                  className={`px-2.5 py-1 rounded-full text-xs font-bold transition-all border ${sedeFilter === 'MADRID' ? 'bg-[#0099cc] border-[#0099cc] text-white shadow-sm' : 'bg-slate-50 dark:bg-zinc-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-800'}`}
+                >
+                  📍 Madrid
+                </button>
+
+                {/* Barcelona pill */}
+                <button
+                  onClick={() => setSedeFilter(sedeFilter === 'BARCELONA' ? 'Todas' : 'BARCELONA')}
+                  className={`px-2.5 py-1 rounded-full text-xs font-bold transition-all border ${sedeFilter === 'BARCELONA' ? 'bg-[#0099cc] border-[#0099cc] text-white shadow-sm' : 'bg-slate-50 dark:bg-zinc-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-800'}`}
+                >
+                  📍 Barcelona
+                </button>
+
+                {/* Canarias pill */}
+                <button
+                  onClick={() => setSedeFilter(sedeFilter === 'GRAN CANARIA' ? 'Todas' : 'GRAN CANARIA')}
+                  className={`px-2.5 py-1 rounded-full text-xs font-bold transition-all border ${sedeFilter === 'GRAN CANARIA' ? 'bg-[#0099cc] border-[#0099cc] text-white shadow-sm' : 'bg-slate-50 dark:bg-zinc-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-800'}`}
+                >
+                  📍 Canarias
+                </button>
+
+
+
+                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-medium ml-2">
+                  (clica en <span className="font-bold text-[#0099cc] underline cursor-pointer hover:text-[#0088bb]" onClick={() => setShowColumnPicker(!showColumnPicker)}>Filtros y Columnas</span> para ver todas las opciones)
+                </span>
               </div>
             </section>
 
