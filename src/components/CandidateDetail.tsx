@@ -380,7 +380,7 @@ export default function CandidateDetail({ candidate, phase, onClose, onNext, onP
               <div className="bg-slate-50 dark:bg-zinc-900/60 px-4 py-2.5 border-b border-slate-150 dark:border-zinc-900 flex justify-between items-center">
                 <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                   <Award size={14} className="text-[#0099cc]" />
-                  Fase 2: Pruebas FEAST
+                  Fase 2: Pruebas Digitales
                 </span>
                 {candidate['TOTAL FASE 2'] && (
                   <span className="text-xs font-black text-[#0099cc] tabular-nums">
