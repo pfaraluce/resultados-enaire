@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'motion/react';
 interface AulasProps {
     data: Candidate[];
     phase: PhaseConfig;
+    onSelectCandidate?: (candidate: Candidate) => void;
 }
 
 // ─── Venue info per sede ──────────────────────────────────────────────────────
@@ -199,9 +200,10 @@ interface AulaCardProps {
     searchWords: string[];
     open: boolean;
     onToggle: () => void;
+    onSelectCandidate?: (candidate: Candidate) => void;
 }
 
-function AulaCard({ aulaLabel, candidates, phase, searchWords, open, onToggle }: AulaCardProps) {
+function AulaCard({ aulaLabel, candidates, phase, searchWords, open, onToggle, onSelectCandidate }: AulaCardProps) {
     const filtered = useMemo(() => {
         if (searchWords.length === 0) return candidates;
         return candidates.filter(c => {
@@ -246,7 +248,8 @@ function AulaCard({ aulaLabel, candidates, phase, searchWords, open, onToggle }:
                                         <tr><td colSpan={4} className="px-3 py-4 text-center text-xs text-slate-400">Sin resultados</td></tr>
                                     ) : filtered.map(c => (
                                         <tr key={c.IDENTIFICADOR + c['APELLIDOS Y NOMBRE']}
-                                            className="hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-colors">
+                                            onClick={() => onSelectCandidate?.(c)}
+                                            className="hover:bg-blue-50/30 dark:hover:bg-blue-900/10 cursor-pointer transition-colors">
                                             {scoreCol && (
                                                 <td className="px-3 py-1.5 text-[11px] font-bold text-slate-400 tabular-nums">
                                                     {c.ranking ? `${c.ranking}.` : '-'}
@@ -290,9 +293,10 @@ interface Fase3DayCardProps {
     searchWords: string[];
     open: boolean;
     onToggle: () => void;
+    onSelectCandidate?: (candidate: Candidate) => void;
 }
 
-function Fase3DayCard({ date, candidates, searchWords, open, onToggle }: Fase3DayCardProps) {
+function Fase3DayCard({ date, candidates, searchWords, open, onToggle, onSelectCandidate }: Fase3DayCardProps) {
     const filtered = useMemo(() => {
         if (searchWords.length === 0) return candidates;
         return candidates.filter(c => {
@@ -333,7 +337,8 @@ function Fase3DayCard({ date, candidates, searchWords, open, onToggle }: Fase3Da
                                         <tr><td colSpan={3} className="px-3 py-4 text-center text-xs text-slate-400">Sin resultados</td></tr>
                                     ) : filtered.map(c => (
                                         <tr key={c.IDENTIFICADOR + c['APELLIDOS Y NOMBRE']}
-                                            className="hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-colors">
+                                            onClick={() => onSelectCandidate?.(c)}
+                                            className="hover:bg-blue-50/30 dark:hover:bg-blue-900/10 cursor-pointer transition-colors">
                                             <td className="px-3 py-1.5 text-[11px] font-bold text-slate-400 tabular-nums">
                                                 {c.ranking ? `${c.ranking}.` : '-'}
                                             </td>
@@ -358,7 +363,7 @@ function Fase3DayCard({ date, candidates, searchWords, open, onToggle }: Fase3Da
 
 // ─── Fase3View ────────────────────────────────────────────────────────────────
 
-function Fase3View({ data, searchWords }: { data: Candidate[]; searchWords: string[] }) {
+function Fase3View({ data, searchWords, onSelectCandidate }: { data: Candidate[]; searchWords: string[]; onSelectCandidate?: (candidate: Candidate) => void }) {
     const emptyVals = ['#N/D', '#N/A', '---', ''];
 
     const fase3Data = useMemo(() =>
@@ -449,6 +454,7 @@ function Fase3View({ data, searchWords }: { data: Candidate[]; searchWords: stri
                             searchWords={searchWords}
                             open={openCards.has(date)}
                             onToggle={() => toggleCard(date)}
+                            onSelectCandidate={onSelectCandidate}
                         />
                     ))}
                 </div>
@@ -466,7 +472,7 @@ function Fase3View({ data, searchWords }: { data: Candidate[]; searchWords: stri
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function Aulas({ data, phase }: AulasProps) {
+export default function Aulas({ data, phase, onSelectCandidate }: AulasProps) {
     const availablePhases = useMemo<AulaPhase[]>(() => {
         return AULA_PHASES.filter(ap => {
             if (ap.id === 'fase3') return data.some(c => !isEmpty(c['FECHA FASE 3'], ap.emptyVal));
@@ -608,7 +614,8 @@ export default function Aulas({ data, phase }: AulasProps) {
         const key = `${outer}::${edificio}::${aula}`;
         return (
             <AulaCard key={key} aulaLabel={aula} candidates={cands} phase={phase}
-                searchWords={searchWords} open={openAulas.has(key)} onToggle={() => toggleAula(key)} />
+                searchWords={searchWords} open={openAulas.has(key)} onToggle={() => toggleAula(key)}
+                onSelectCandidate={onSelectCandidate} />
         );
     };
 
@@ -667,7 +674,7 @@ export default function Aulas({ data, phase }: AulasProps) {
 
             {/* Fase 3 view */}
             {selectedPhaseId === 'fase3' ? (
-                <Fase3View data={data} searchWords={searchWords} />
+                <Fase3View data={data} searchWords={searchWords} onSelectCandidate={onSelectCandidate} />
             ) : outerKeys.length === 0 ? (
                 <div className="bg-white dark:bg-zinc-950 rounded-xl border border-slate-200 dark:border-zinc-800 p-12 text-center">
                     <p className="text-slate-400 text-sm">No hay aulas para la fecha seleccionada.</p>

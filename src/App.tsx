@@ -4,6 +4,7 @@ import { Search, Filter, ChevronDown, ChevronUp, MapPin, User, Info, Settings2, 
 import { motion, AnimatePresence } from 'motion/react';
 import Statistics from './components/Statistics';
 import Aulas from './components/Aulas';
+import CandidateDetail from './components/CandidateDetail';
 import { detectPhase, PhaseConfig } from './phaseConfig';
 
 // Generic candidate record — fields vary per phase CSV.
@@ -29,6 +30,7 @@ export default function App() {
   const [showColumnPicker, setShowColumnPicker] = useState(false);
   const [visibleCount, setVisibleCount] = useState(100);
   const [view, setView] = useState<'buscador' | 'estadisticas' | 'aulas'>('buscador');
+  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
 
   useEffect(() => {
     setVisibleCount(100);
@@ -298,7 +300,7 @@ export default function App() {
         ) : view === 'estadisticas' ? (
           <Statistics data={data} phase={phase!} />
         ) : view === 'aulas' ? (
-          <Aulas data={data} phase={phase!} />
+          <Aulas data={data} phase={phase!} onSelectCandidate={setSelectedCandidate} />
         ) : (
           <>
             {/* Origen de datos (Discreto, sin recuadro) */}
@@ -511,7 +513,8 @@ export default function App() {
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             layout
-                            className="hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-colors"
+                            className="hover:bg-blue-50/30 dark:hover:bg-blue-900/10 cursor-pointer transition-colors"
+                            onClick={() => setSelectedCandidate(candidate)}
                           >
                             {scoreColumn && (
                               <td className="px-3 py-1.5 text-[11px] font-bold text-slate-400 dark:text-slate-500 tabular-nums">
@@ -592,6 +595,16 @@ export default function App() {
           </p>
         </div>
       </footer>
-    </div >
+
+      <AnimatePresence>
+        {selectedCandidate && (
+          <CandidateDetail
+            candidate={selectedCandidate}
+            phase={phase!}
+            onClose={() => setSelectedCandidate(null)}
+          />
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
