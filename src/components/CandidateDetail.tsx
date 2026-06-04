@@ -1,5 +1,6 @@
-import { X, Trophy, MapPin, Calendar, FileText, ChevronRight, User, Award, Percent } from 'lucide-react';
+import { X, Trophy, MapPin, Calendar, FileText, ChevronRight, User, Award, Percent, Link, Check, ChevronLeft } from 'lucide-react';
 import { motion } from 'motion/react';
+import { useState, useEffect } from 'react';
 import { Candidate } from '../App';
 import { PhaseConfig } from '../phaseConfig';
 
@@ -7,10 +8,37 @@ interface CandidateDetailProps {
   candidate: Candidate | null;
   phase: PhaseConfig;
   onClose: () => void;
+  onNext?: () => void;
+  onPrev?: () => void;
 }
 
-export default function CandidateDetail({ candidate, phase, onClose }: CandidateDetailProps) {
+export default function CandidateDetail({ candidate, phase, onClose, onNext, onPrev }: CandidateDetailProps) {
   if (!candidate) return null;
+
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyLink = () => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('id', candidate['APELLIDOS Y NOMBRE']);
+    navigator.clipboard.writeText(url.toString()).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2050);
+    });
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight' && onNext) {
+        onNext();
+      } else if (e.key === 'ArrowLeft' && onPrev) {
+        onPrev();
+      } else if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onNext, onPrev, onClose]);
 
   const getStatusBadge = (status: string | undefined) => {
     if (!status) return null;
@@ -164,12 +192,44 @@ export default function CandidateDetail({ candidate, phase, onClose }: Candidate
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors absolute right-4 top-4"
-          >
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-1 absolute right-4 top-4">
+            {onPrev && (
+              <button
+                onClick={onPrev}
+                className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                title="Anterior (←)"
+                aria-label="Candidato anterior"
+              >
+                <ChevronLeft size={18} />
+              </button>
+            )}
+            {onNext && (
+              <button
+                onClick={onNext}
+                className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                title="Siguiente (→)"
+                aria-label="Siguiente candidato"
+              >
+                <ChevronRight size={18} />
+              </button>
+            )}
+            <button
+              onClick={handleCopyLink}
+              className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+              title="Copiar enlace a esta ficha"
+              aria-label="Copiar enlace"
+            >
+              {copied ? <Check size={18} className="text-emerald-500 font-bold" /> : <Link size={18} />}
+            </button>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+              title="Cerrar (Esc)"
+              aria-label="Cerrar"
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         {/* Scrollable Content */}
@@ -426,6 +486,30 @@ export default function CandidateDetail({ candidate, phase, onClose }: Candidate
           Consulta de resultados Enaire 2025 · Ficha del Alumno
         </div>
       </motion.div>
+
+      {/* Floating navigation controls for desktop */}
+      <div className="hidden lg:block">
+        {onPrev && (
+          <button
+            onClick={onPrev}
+            className="absolute left-8 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 dark:bg-zinc-900/10 dark:hover:bg-zinc-900/30 p-3.5 rounded-full text-white border border-white/20 hover:scale-105 transition-all shadow-lg backdrop-blur-md"
+            aria-label="Candidato anterior"
+            title="Anterior (←)"
+          >
+            <ChevronLeft size={28} />
+          </button>
+        )}
+        {onNext && (
+          <button
+            onClick={onNext}
+            className="absolute right-8 top-1/2 -translate-y-1/2 bg-white/10 hover:bg-white/20 dark:bg-zinc-900/10 dark:hover:bg-zinc-900/30 p-3.5 rounded-full text-white border border-white/20 hover:scale-105 transition-all shadow-lg backdrop-blur-md"
+            aria-label="Siguiente candidato"
+            title="Siguiente (→)"
+          >
+            <ChevronRight size={28} />
+          </button>
+        )}
+      </div>
     </div>
   );
 }

@@ -32,6 +32,7 @@ export default function App() {
   const [view, setView] = useState<'buscador' | 'estadisticas' | 'aulas'>('buscador');
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const lastAutoOpenedSearchRef = useRef('');
+  const hasReadUrlParamRef = useRef(false);
 
   useEffect(() => {
     setVisibleCount(100);
@@ -154,6 +155,39 @@ export default function App() {
     fetchData();
   }, []);
 
+  // Read candidate from URL query parameter 'id' on load or when data is available
+  useEffect(() => {
+    if (data.length > 0 && !hasReadUrlParamRef.current) {
+      hasReadUrlParamRef.current = true;
+      const params = new URLSearchParams(window.location.search);
+      const idParam = params.get('id');
+      if (idParam) {
+        const found = data.find(c => c['APELLIDOS Y NOMBRE'] === idParam);
+        if (found) {
+          setSelectedCandidate(found);
+        }
+      }
+    }
+  }, [data]);
+
+  // Sync selectedCandidate back to URL query parameter 'id'
+  useEffect(() => {
+    // Only sync if we have finished loading and have run the initial URL query reading
+    if (!loading && hasReadUrlParamRef.current) {
+      const params = new URLSearchParams(window.location.search);
+      if (selectedCandidate) {
+        params.set('id', selectedCandidate['APELLIDOS Y NOMBRE']);
+        const newUrl = window.location.pathname + '?' + params.toString();
+        window.history.replaceState({}, '', newUrl);
+      } else {
+        params.delete('id');
+        const searchStr = params.toString();
+        const newUrl = window.location.pathname + (searchStr ? '?' + searchStr : '');
+        window.history.replaceState({}, '', newUrl);
+      }
+    }
+  }, [selectedCandidate, loading]);
+
   const sedes = useMemo(() => {
     const uniqueSedes = Array.from(new Set(data.map(item => item['SEDE DE EXAMEN FASE 1']).filter(Boolean)));
     return ['Todas', ...uniqueSedes.sort()];
@@ -248,6 +282,25 @@ export default function App() {
     setVisibleColumns(prev =>
       prev.includes(key) ? prev.filter(c => c !== key) : [...prev, key]
     );
+  };
+
+  const currentIndex = useMemo(() => {
+    if (!selectedCandidate) return -1;
+    return filteredData.findIndex(
+      c => c.IDENTIFICADOR === selectedCandidate.IDENTIFICADOR && c['APELLIDOS Y NOMBRE'] === selectedCandidate['APELLIDOS Y NOMBRE']
+    );
+  }, [filteredData, selectedCandidate]);
+
+  const handleNextCandidate = () => {
+    if (currentIndex !== -1 && currentIndex < filteredData.length - 1) {
+      setSelectedCandidate(filteredData[currentIndex + 1]);
+    }
+  };
+
+  const handlePrevCandidate = () => {
+    if (currentIndex !== -1 && currentIndex > 0) {
+      setSelectedCandidate(filteredData[currentIndex - 1]);
+    }
   };
 
   // Derived: all columns and visible columns from phase config
@@ -618,6 +671,8 @@ export default function App() {
             candidate={selectedCandidate}
             phase={phase!}
             onClose={() => setSelectedCandidate(null)}
+            onNext={currentIndex < filteredData.length - 1 ? handleNextCandidate : undefined}
+            onPrev={currentIndex > 0 ? handlePrevCandidate : undefined}
           />
         )}
       </AnimatePresence>
