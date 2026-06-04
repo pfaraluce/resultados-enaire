@@ -31,6 +31,7 @@ export default function App() {
   const [visibleCount, setVisibleCount] = useState(100);
   const [view, setView] = useState<'buscador' | 'estadisticas' | 'aulas'>('buscador');
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
+  const lastAutoOpenedSearchRef = useRef('');
 
   useEffect(() => {
     setVisibleCount(100);
@@ -219,6 +220,21 @@ export default function App() {
 
     return filtered;
   }, [data, searchTerm, sedeFilter, estadoFilter, sortConfig, phase]);
+
+  // Auto-open modal when search results narrow down to exactly 1 candidate
+  useEffect(() => {
+    const trimmedSearch = searchTerm.trim();
+    if (trimmedSearch && filteredData.length === 1) {
+      if (lastAutoOpenedSearchRef.current !== trimmedSearch) {
+        lastAutoOpenedSearchRef.current = trimmedSearch;
+        setSelectedCandidate(filteredData[0]);
+      }
+    } else {
+      if (lastAutoOpenedSearchRef.current !== trimmedSearch) {
+        lastAutoOpenedSearchRef.current = trimmedSearch;
+      }
+    }
+  }, [filteredData, searchTerm]);
 
   const handleSort = (key: string) => {
     let direction: 'asc' | 'desc' = 'asc';

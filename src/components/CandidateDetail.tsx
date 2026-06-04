@@ -60,18 +60,49 @@ export default function CandidateDetail({ candidate, phase, onClose }: Candidate
   const hasFase3Data = candidate['F1+F2+F3A'] !== undefined || candidate['INGLÉS ORAL'] !== undefined || candidate['FECHA FASE 3'] !== undefined;
 
   // Determine active overall status
-  let overallStatus = '-';
-  if (statusColumn && candidate[statusColumn]) {
-    overallStatus = candidate[statusColumn];
-  } else if (candidate['ESTADO DEFINITIVO FASE 2']) {
-    overallStatus = candidate['ESTADO DEFINITIVO FASE 2'];
-  } else if (candidate['ESTADO PROVISIONAL FASE 2']) {
-    overallStatus = candidate['ESTADO PROVISIONAL FASE 2'];
-  } else if (candidate['ESTADO DEFINITIVO FASE 1']) {
-    overallStatus = candidate['ESTADO DEFINITIVO FASE 1'];
-  } else if (candidate['ESTADO PROVISIONAL']) {
-    overallStatus = candidate['ESTADO PROVISIONAL'];
-  }
+  const getOverallStatus = () => {
+    const statusFields = [
+      candidate['ESTADO PROVISIONAL FASE 3A'],
+      candidate['ESTADO DEFINITIVO FASE 2'],
+      candidate['ESTADO PROVISIONAL FASE 2'],
+      candidate['ESTADO DEFINITIVO FASE 1'],
+      candidate['ESTADO PROVISIONAL']
+    ];
+
+    // If any status is explicitly NO APTO/A, they are NO APTO/A overall
+    if (statusFields.some(status => status && (status.trim().toUpperCase() === 'NO APTO/A' || status.trim().toUpperCase() === 'NO APTO'))) {
+      return 'NO APTO/A';
+    }
+
+    // Special status like Renuncia or Exclusión
+    const renuncia = statusFields.find(status => status && status.trim().toUpperCase().includes('RENUNCIA'));
+    if (renuncia) return renuncia;
+
+    const exclusion = statusFields.find(status => status && status.trim().toUpperCase().includes('EXCLUS'));
+    if (exclusion) return exclusion;
+
+    // Otherwise, check chronologically from latest to oldest for a valid non-empty and non-hyphen status
+    for (const status of statusFields) {
+      if (status && status !== '---' && status !== '#N/D' && status !== '#N/A' && status !== '') {
+        return status;
+      }
+    }
+
+    // Fallback to active statusColumn if present and has real value
+    if (statusColumn && candidate[statusColumn] && candidate[statusColumn] !== '---') {
+      return candidate[statusColumn];
+    }
+
+    // Last valid status that wasn't '---'
+    const latestValidStatus = statusFields.find(status => status && status !== '---' && status !== '#N/D' && status !== '#N/A' && status !== '');
+    if (latestValidStatus) {
+      return latestValidStatus;
+    }
+
+    return '-';
+  };
+
+  const overallStatus = getOverallStatus();
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -212,7 +243,7 @@ export default function CandidateDetail({ candidate, phase, onClose }: Candidate
           </div>
 
           {/* Total Provisional (F1+F2+F3A) */}
-          {candidate['F1+F2+F3A'] && (
+          {overallStatus !== 'NO APTO/A' && candidate['F1+F2+F3A'] && candidate['F1+F2+F3A'] !== '---' && candidate['F1+F2+F3A'] !== '#N/D' && candidate['F1+F2+F3A'] !== '#N/A' && (
             <div className="bg-[#0099cc]/10 dark:bg-[#0099cc]/5 p-4 rounded-xl border border-[#0099cc]/20 flex justify-between items-center shadow-sm">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 rounded-lg bg-[#0099cc] text-white">
