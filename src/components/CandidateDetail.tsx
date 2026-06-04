@@ -331,8 +331,8 @@ export default function CandidateDetail({ candidate, phase, onClose }: Candidate
               <div className="p-4 space-y-4">
                 <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs">
                   <div className="flex justify-between items-center border-b border-dashed border-slate-100 dark:border-zinc-800 pb-1.5">
-                    <span className="text-slate-500 dark:text-slate-400">Total F1+F2</span>
-                    {renderValue(candidate['F1+F2'])}
+                    <span className="text-slate-500 dark:text-slate-400">FEAST + PDEA</span>
+                    {renderValue(candidate['TOTAL FASE 2'])}
                   </div>
                   <div className="flex justify-between items-center border-b border-dashed border-slate-100 dark:border-zinc-800 pb-1.5">
                     <span className="text-slate-500 dark:text-slate-400">Estado Fase 2</span>
