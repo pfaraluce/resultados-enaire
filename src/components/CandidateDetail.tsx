@@ -44,29 +44,47 @@ export default function CandidateDetail({ candidate, phase, onClose, onNext, onP
   const getStatusBadge = (status: string | undefined) => {
     if (!status) return null;
     const cleanStatus = status.trim().toUpperCase();
+
+    // Special override for phase 3 prov plaza:
+    if (phase.id === 'fase3-prov' && (cleanStatus === 'APTO/A' || cleanStatus === 'APTO')) {
+      if (candidate.ranking && candidate.ranking <= 149) {
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-100 dark:bg-emerald-950/45 text-emerald-800 dark:text-emerald-450 border border-emerald-250/50 dark:border-emerald-900/30 animate-pulse">
+            Con Plaza (Prov.)
+          </span>
+        );
+      } else if (candidate.ranking) {
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border border-amber-200/40 dark:border-amber-900/20">
+            Apto (Sin Plaza)
+          </span>
+        );
+      }
+    }
+
     if (cleanStatus === 'APTO/A' || cleanStatus === 'APTO') {
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-100 dark:bg-emerald-900/30 text-emerald-750 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/20">
+        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-100 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/20">
           Apto
         </span>
       );
     }
     if (cleanStatus === 'NO APTO/A' || cleanStatus === 'NO APTO') {
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-rose-100 dark:bg-rose-900/30 text-rose-750 dark:text-rose-400 border border-rose-200 dark:border-rose-900/20">
+        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-rose-100 dark:bg-rose-950/30 text-rose-700 dark:text-rose-455 border border-rose-200 dark:border-rose-900/20">
           No Apto
         </span>
       );
     }
     if (cleanStatus === 'NO PRESENTADO' || cleanStatus === 'NP' || cleanStatus === '---') {
       return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-zinc-700">
+        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-slate-100 dark:bg-zinc-900 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-zinc-800">
           No Presentado
         </span>
       );
     }
     return (
-      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-blue-100/80 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/20">
+      <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-blue-50 dark:bg-blue-955/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/20">
         {status}
       </span>
     );
@@ -528,54 +546,16 @@ export default function CandidateDetail({ candidate, phase, onClose, onNext, onP
         {/* Header decoration */}
         <div className="absolute top-0 inset-x-0 h-1.5 bg-linear-to-r from-blue-500 via-[#0099cc] to-emerald-500" />
 
-        {/* Modal Header */}
-        <div className="p-6 pb-4 flex justify-between items-start border-b border-slate-100 dark:border-zinc-900 relative">
-          <div className="space-y-1 pr-8">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-[#0099cc] bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded">
-                Candidato
-              </span>
-              {candidate.ranking && (
-                <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2 py-0.5 rounded">
-                  <Trophy size={10} />
-                  <span>Puesto {candidate.ranking}</span>
-                  {candidate.rankingF1 && (() => {
-                    const delta = candidate.rankingF1 - candidate.ranking;
-                    if (delta > 0) return <span className="text-emerald-500">+{delta}</span>;
-                    if (delta < 0) return <span className="text-rose-500">{delta}</span>;
-                    return null;
-                  })()}
-                </div>
-              )}
-              {getStatusBadge(overallStatus)}
-              {phase.id === 'fase3-prov' && candidate.ranking && candidate.ranking <= 149 && (
-                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-450 border border-emerald-250 dark:border-emerald-900/20 animate-pulse">
-                  Provisionalmente con plaza
-                </span>
-              )}
-            </div>
-            <h2 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mt-2">
-              {candidate['APELLIDOS Y NOMBRE']}
-            </h2>
-            <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400 mt-1">
-              <span className="flex items-center gap-1">
-                <User size={12} className="text-slate-400" />
-                ID: {candidate.IDENTIFICADOR || '-'}
-              </span>
-              {candidate['SEDE DE EXAMEN FASE 1'] && (
-                <span className="flex items-center gap-1">
-                  <MapPin size={12} className="text-slate-400" />
-                  Sede F1: {candidate['SEDE DE EXAMEN FASE 1']}
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1 absolute right-4 top-4">
+        {/* Top Control Bar / Toolbar */}
+        <div className="pt-4 pb-3 px-6 bg-slate-50 dark:bg-zinc-900/40 border-b border-slate-100 dark:border-zinc-900 flex justify-between items-center z-10">
+          <span className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+            Ficha del Candidato
+          </span>
+          <div className="flex items-center gap-1">
             {onPrev && (
               <button
                 onClick={onPrev}
-                className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                className="p-1.5 rounded-lg hover:bg-slate-200/60 dark:hover:bg-zinc-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
                 title="Anterior (←)"
                 aria-label="Candidato anterior"
               >
@@ -585,16 +565,17 @@ export default function CandidateDetail({ candidate, phase, onClose, onNext, onP
             {onNext && (
               <button
                 onClick={onNext}
-                className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                className="p-1.5 rounded-lg hover:bg-slate-200/60 dark:hover:bg-zinc-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
                 title="Siguiente (→)"
                 aria-label="Siguiente candidato"
               >
                 <ChevronRight size={18} />
               </button>
             )}
+            <div className="h-4 w-px bg-slate-200 dark:bg-zinc-800 mx-1" />
             <button
               onClick={handleCopyLink}
-              className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+              className="p-1.5 rounded-lg hover:bg-slate-200/60 dark:hover:bg-zinc-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
               title="Copiar enlace a esta ficha"
               aria-label="Copiar enlace"
             >
@@ -602,7 +583,7 @@ export default function CandidateDetail({ candidate, phase, onClose, onNext, onP
             </button>
             <button
               onClick={handleDownloadPDF}
-              className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+              className="p-1.5 rounded-lg hover:bg-slate-200/60 dark:hover:bg-zinc-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
               title="Descargar Ficha en PDF (A4)"
               aria-label="Descargar PDF"
             >
@@ -610,7 +591,7 @@ export default function CandidateDetail({ candidate, phase, onClose, onNext, onP
             </button>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+              className="p-1.5 rounded-lg hover:bg-slate-200/60 dark:hover:bg-zinc-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
               title="Cerrar (Esc)"
               aria-label="Cerrar"
             >
@@ -619,8 +600,42 @@ export default function CandidateDetail({ candidate, phase, onClose, onNext, onP
           </div>
         </div>
 
+        {/* Candidate Profile Header */}
+        <div className="p-6 pb-4 border-b border-slate-100 dark:border-zinc-900 flex flex-col gap-2.5">
+          <div className="flex items-center gap-2 flex-wrap">
+            {candidate.ranking && (
+              <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-55/60 dark:bg-amber-950/40 px-2 py-0.5 rounded border border-amber-200/40 dark:border-amber-900/20">
+                <Trophy size={10} className="text-amber-500" />
+                <span>Puesto {candidate.ranking}</span>
+                {candidate.rankingF1 && (() => {
+                  const delta = candidate.rankingF1 - candidate.ranking;
+                  if (delta > 0) return <span className="text-emerald-600 dark:text-emerald-450 ml-0.5">+{delta}</span>;
+                  if (delta < 0) return <span className="text-rose-650 dark:text-rose-455 ml-0.5">{delta}</span>;
+                  return null;
+                })()}
+              </div>
+            )}
+            {getStatusBadge(overallStatus)}
+          </div>
+          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+            {candidate['APELLIDOS Y NOMBRE']}
+          </h2>
+          <div className="flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+            <span className="flex items-center gap-1">
+              <User size={12} className="text-slate-400" />
+              ID: {candidate.IDENTIFICADOR || '-'}
+            </span>
+            {candidate['SEDE DE EXAMEN FASE 1'] && (
+              <span className="flex items-center gap-1">
+                <MapPin size={12} className="text-slate-400" />
+                Sede F1: {candidate['SEDE DE EXAMEN FASE 1']}
+              </span>
+            )}
+          </div>
+        </div>
+
         {/* Scrollable Content */}
-        <div className="p-6 overflow-y-auto space-y-6 max-h-[calc(90vh-120px)] scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-zinc-800">
+        <div className="flex-1 p-6 overflow-y-auto space-y-6 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-zinc-800">
           {/* Timeline / Progress Indicator */}
           <div className="bg-slate-50 dark:bg-zinc-900/30 rounded-xl p-4 border border-slate-200 dark:border-zinc-900">
             <h3 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
