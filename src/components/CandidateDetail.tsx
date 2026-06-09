@@ -66,7 +66,7 @@ export default function CandidateDetail({ candidate, phase, onClose, onNext, onP
       );
     }
     return (
-      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-blue-150 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/20">
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-blue-100/80 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900/20">
         {status}
       </span>
     );
@@ -76,7 +76,7 @@ export default function CandidateDetail({ candidate, phase, onClose, onNext, onP
     if (value === undefined || value === null || value === '---' || value === '#N/A' || value === '#N/D' || value === '') {
       return <span className="text-slate-400 dark:text-slate-600 font-medium">-</span>;
     }
-    return <span className="font-bold text-slate-800 dark:text-slate-150">{value}</span>;
+    return <span className="font-bold text-slate-800 dark:text-slate-200">{value}</span>;
   };
 
   const scoreColumn = phase.scoreColumn;
@@ -622,7 +622,7 @@ export default function CandidateDetail({ candidate, phase, onClose, onNext, onP
         {/* Scrollable Content */}
         <div className="p-6 overflow-y-auto space-y-6 max-h-[calc(90vh-120px)] scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-zinc-800">
           {/* Timeline / Progress Indicator */}
-          <div className="bg-slate-50 dark:bg-zinc-900/30 rounded-xl p-4 border border-slate-150 dark:border-zinc-900">
+          <div className="bg-slate-50 dark:bg-zinc-900/30 rounded-xl p-4 border border-slate-200 dark:border-zinc-900">
             <h3 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">
               Progreso en el Proceso Selectivo
             </h3>
@@ -756,8 +756,8 @@ export default function CandidateDetail({ candidate, phase, onClose, onNext, onP
 
           {/* Phase 1 Details */}
           {hasFase1Data && (
-            <div className="border border-slate-150 dark:border-zinc-900 rounded-xl overflow-hidden shadow-sm">
-              <div className="bg-slate-50 dark:bg-zinc-900/60 px-4 py-2.5 border-b border-slate-150 dark:border-zinc-900 flex justify-between items-center">
+            <div className="border border-slate-200 dark:border-zinc-900 rounded-xl overflow-hidden shadow-sm">
+              <div className="bg-slate-50 dark:bg-zinc-900/60 px-4 py-2.5 border-b border-slate-200 dark:border-zinc-900 flex justify-between items-center">
                 <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                   <Award size={14} className="text-[#0099cc]" />
                   Fase 1: Conocimientos, Aptitudes y Personalidad
@@ -812,8 +812,8 @@ export default function CandidateDetail({ candidate, phase, onClose, onNext, onP
 
           {/* Phase 2 Details */}
           {hasFase2Data && (
-            <div className="border border-slate-150 dark:border-zinc-900 rounded-xl overflow-hidden shadow-sm">
-              <div className="bg-slate-50 dark:bg-zinc-900/60 px-4 py-2.5 border-b border-slate-150 dark:border-zinc-900 flex justify-between items-center">
+            <div className="border border-slate-200 dark:border-zinc-900 rounded-xl overflow-hidden shadow-sm">
+              <div className="bg-slate-50 dark:bg-zinc-900/60 px-4 py-2.5 border-b border-slate-200 dark:border-zinc-900 flex justify-between items-center">
                 <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                   <Award size={14} className="text-[#0099cc]" />
                   Fase 2: Pruebas Digitales
@@ -867,8 +867,8 @@ export default function CandidateDetail({ candidate, phase, onClose, onNext, onP
 
           {/* Phase 3 Details */}
           {hasFase3Data && (
-            <div className="border border-slate-150 dark:border-zinc-900 rounded-xl overflow-hidden shadow-sm">
-              <div className="bg-slate-50 dark:bg-zinc-900/60 px-4 py-2.5 border-b border-slate-150 dark:border-zinc-900 flex justify-between items-center">
+            <div className="border border-slate-200 dark:border-zinc-900 rounded-xl overflow-hidden shadow-sm">
+              <div className="bg-slate-50 dark:bg-zinc-900/60 px-4 py-2.5 border-b border-slate-200 dark:border-zinc-900 flex justify-between items-center">
                 <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                   <Award size={14} className="text-[#0099cc]" />
                   Fase 3: Inglés, Conductual y Clínica
@@ -942,7 +942,7 @@ export default function CandidateDetail({ candidate, phase, onClose, onNext, onP
         </div>
 
         {/* Modal Footer */}
-        <div className="p-4 bg-slate-50 dark:bg-zinc-900/50 border-t border-slate-150 dark:border-zinc-900 text-center text-[10px] text-slate-400 dark:text-slate-550">
+        <div className="p-4 bg-slate-50 dark:bg-zinc-900/50 border-t border-slate-200 dark:border-zinc-900 text-center text-[10px] text-slate-400 dark:text-slate-500">
           Consulta de resultados Enaire 2025 · Ficha del Alumno
         </div>
       </motion.div>

@@ -843,7 +843,7 @@ export default function Statistics({ data, phase }: StatisticsProps) {
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Moda de Aprobados por Día */}
-            <div className="bg-slate-50/50 dark:bg-zinc-900/20 border border-slate-150 dark:border-zinc-800/80 rounded-xl p-5 flex flex-col justify-between">
+            <div className="bg-slate-50/50 dark:bg-zinc-900/20 border border-slate-200 dark:border-zinc-800/80 rounded-xl p-5 flex flex-col justify-between">
               <div className="flex items-start gap-4">
                 <div className="p-3 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl text-[#0099cc] shrink-0">
                   <Calendar size={20} />
@@ -851,7 +851,7 @@ export default function Statistics({ data, phase }: StatisticsProps) {
                 <div>
                   <h4 className="font-bold text-slate-700 dark:text-slate-200 text-sm">Frecuencia de Aprobados en Conductual (3B)</h4>
                   <p className="text-xs text-slate-400 dark:text-zinc-500 mt-1 leading-relaxed">
-                    Número de candidatos aptos más habitual por jornada de evaluación en la prueba conductual, calculado sobre las {stats.totalDiasF3} jornadas.
+                    Número de candidatos aptos más habitual por jornada de evaluación en la prueba conductual, calculated sobre las {stats.totalDiasF3} jornadas.
                   </p>
                 </div>
               </div>
@@ -864,7 +864,7 @@ export default function Statistics({ data, phase }: StatisticsProps) {
             </div>
 
             {/* Movimiento en el Ranking */}
-            <div className="bg-slate-50/50 dark:bg-zinc-900/20 border border-slate-150 dark:border-zinc-800/80 rounded-xl p-5 flex flex-col justify-between">
+            <div className="bg-slate-50/50 dark:bg-zinc-900/20 border border-slate-200 dark:border-zinc-800/80 rounded-xl p-5 flex flex-col justify-between">
               <div className="flex items-start gap-4">
                 <div className="p-3 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl text-emerald-500 shrink-0">
                   <TrendingUp size={20} />
