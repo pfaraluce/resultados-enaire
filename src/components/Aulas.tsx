@@ -433,6 +433,47 @@ function Fase3View({ data, searchWords, onSelectCandidate }: { data: Candidate[]
         }).length;
     }, [fase3Data, searchWords]);
 
+    const modeInfo = useMemo(() => {
+        const f3Dates = data.map(d => d['FECHA FASE 3']?.trim()).filter(Boolean);
+        const validDates = Array.from(new Set(f3Dates)).filter(d => !emptyVals.includes(d));
+
+        if (validDates.length === 0) return { mode: 0, totalDays: 0 };
+
+        const aptos3BByDate: Record<string, number> = {};
+        validDates.forEach(d => {
+            aptos3BByDate[d] = 0;
+        });
+
+        data.forEach(d => {
+            const date = d['FECHA FASE 3']?.trim();
+            const resultado3B = d['RESULTADO 3 B)']?.trim().toUpperCase();
+            if (date && !emptyVals.includes(date) && resultado3B === 'APTO/A') {
+                if (aptos3BByDate[date] !== undefined) {
+                    aptos3BByDate[date]++;
+                }
+            }
+        });
+
+        const counts = Object.values(aptos3BByDate);
+        if (counts.length === 0) return { mode: 0, totalDays: 0 };
+
+        const frequencies: Record<number, number> = {};
+        let maxFrequency = 0;
+        let mode = 0;
+
+        counts.forEach(count => {
+            frequencies[count] = (frequencies[count] || 0) + 1;
+            if (frequencies[count] > maxFrequency) {
+                maxFrequency = frequencies[count];
+                mode = count;
+            } else if (frequencies[count] === maxFrequency && count > mode) {
+                mode = count;
+            }
+        });
+
+        return { mode, totalDays: validDates.length };
+    }, [data]);
+
     if (fase3Data.length === 0) {
         return (
             <div className="bg-white dark:bg-zinc-950 rounded-xl border border-slate-200 dark:border-zinc-800 p-12 text-center">
@@ -454,6 +495,24 @@ function Fase3View({ data, searchWords, onSelectCandidate }: { data: Candidate[]
                 </div>
                 <div className="p-4 space-y-4">
                     <Fase3VenueInfo />
+
+                    {/* Número más común de aprobados por día (Conductual 3B) */}
+                    <div className="bg-slate-50/50 dark:bg-zinc-900/20 border border-slate-200 dark:border-zinc-800/80 p-4 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-xs">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-lg text-[#0099cc]">
+                                <Users size={16} />
+                            </div>
+                            <div>
+                                <span className="font-bold text-slate-700 dark:text-slate-200 block text-sm">Aprobados más Comunes por Día en Conductual (3B)</span>
+                                <span className="text-[11px] text-slate-400">Número de candidatos aptos más frecuente por jornada de evaluación ({modeInfo.totalDays} jornadas).</span>
+                            </div>
+                        </div>
+                        <div className="bg-[#0099cc]/5 px-3 py-2 rounded-lg border border-[#0099cc]/15 flex flex-col items-center min-w-[120px] self-stretch sm:self-auto justify-center">
+                            <span className="text-[10px] text-[#0099cc] font-bold uppercase tracking-wider">Moda de Aptos</span>
+                            <span className="font-black text-[#0099cc] text-base mt-0.5">{modeInfo.mode}</span>
+                        </div>
+                    </div>
+
                     {visibleDates.map(date => (
                         <Fase3DayCard
                             key={date}

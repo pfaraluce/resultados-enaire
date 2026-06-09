@@ -3,7 +3,7 @@ import { Candidate } from '../App';
 import { PhaseConfig } from '../phaseConfig';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  ComposedChart, Line, Cell, Sankey
+  ComposedChart, Line, Cell
 } from 'recharts';
 import { 
   Users, UserCheck, UserX, Award, MapPin, Calendar, 
@@ -17,7 +17,8 @@ interface StatisticsProps {
 
 export default function Statistics({ data, phase }: StatisticsProps) {
   const [shouldRenderChart, setShouldRenderChart] = useState(false);
-  const [funnelView, setFunnelView] = useState<'cards' | 'sankey'>('cards');
+  const [funnelView, setFunnelView] = useState<'sankey' | 'cards'>('sankey');
+  const [hoveredFlow, setHoveredFlow] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -135,22 +136,6 @@ export default function Statistics({ data, phase }: StatisticsProps) {
       };
     }).sort((a, b) => a.name.localeCompare(b.name));
 
-    // Phase 3B (Conductual) average pass rate per day
-    const f3Dates = data.map(d => d['FECHA FASE 3']?.trim()).filter(Boolean);
-    const validF3Dates = Array.from(new Set(f3Dates)).filter(d => d !== '---' && d !== '#N/A' && d !== '#N/D');
-
-    let totalAprobados3B = 0;
-    data.forEach(d => {
-      const date = d['FECHA FASE 3']?.trim();
-      const resultado3B = d['RESULTADO 3 B)']?.trim().toUpperCase();
-      if (date && date !== '---' && date !== '#N/A' && date !== '#N/D' && resultado3B === 'APTO/A') {
-        totalAprobados3B++;
-      }
-    });
-
-    const totalDiasF3 = validF3Dates.length;
-    const mediaAprobados3BDia = totalDiasF3 > 0 ? totalAprobados3B / totalDiasF3 : 0;
-
     return {
       convocados,
       presentadosF1,
@@ -163,130 +148,196 @@ export default function Statistics({ data, phase }: StatisticsProps) {
       aptAptos,
       persAptos,
       bySede,
-      byDiaF1,
-      mediaAprobados3BDia,
-      totalDiasF3
+      byDiaF1
     };
   }, [data]);
 
-  const sankeyData = useMemo(() => {
-    const nodes = [
-      { name: 'Convocados' },      // 0
-      { name: 'Presentados F1' },  // 1
-      { name: 'No Presentados' },  // 2
-      { name: 'Aptos Fase 1' },    // 3
-      { name: 'No Aptos Fase 1' }  // 4
-    ];
-
-    const links = [
-      { source: 0, target: 1, value: stats.presentadosF1 },
-      { source: 0, target: 2, value: Math.max(0, stats.convocados - stats.presentadosF1) },
-      { source: 1, target: 3, value: stats.aprobadosF1 },
-      { source: 1, target: 4, value: Math.max(0, stats.presentadosF1 - stats.aprobadosF1) }
+  const columns = useMemo(() => {
+    const cols = [
+      {
+        index: 0,
+        success: { name: 'Convocados', value: stats.convocados, pct: '100% Ratio Inicial' }
+      },
+      {
+        index: 1,
+        success: { name: 'Presentados F1', value: stats.presentadosF1, pct: `${((stats.presentadosF1 / stats.convocados) * 100).toFixed(1)}% asistencia` },
+        dropout: { name: 'No Presentados', value: Math.max(0, stats.convocados - stats.presentadosF1), pct: `${(((stats.convocados - stats.presentadosF1) / stats.convocados) * 100).toFixed(1)}% no asiste` }
+      },
+      {
+        index: 2,
+        success: { name: 'Aptos Fase 1', value: stats.aprobadosF1, pct: `${((stats.aprobadosF1 / stats.presentadosF1) * 100).toFixed(1)}% aprobado` },
+        dropout: { name: 'No Aptos Fase 1', value: Math.max(0, stats.presentadosF1 - stats.aprobadosF1), pct: `${(((stats.presentadosF1 - stats.aprobadosF1) / stats.presentadosF1) * 100).toFixed(1)}% descarte` }
+      }
     ];
 
     const hasF2 = stats.aprobadosF2 > 0 || phase.id === 'fase2' || phase.id === 'fase3a-prov' || phase.id === 'fase3-prov';
     if (hasF2) {
-      nodes.push({ name: 'Aptos Fase 2' });      // 5
-      nodes.push({ name: 'No Aptos Fase 2' });   // 6
-      links.push({ source: 3, target: 5, value: stats.aprobadosF2 });
-      links.push({ source: 3, target: 6, value: Math.max(0, stats.aprobadosF1 - stats.aprobadosF2) });
+      cols.push({
+        index: 3,
+        success: { name: 'Aptos Fase 2', value: stats.aprobadosF2, pct: `${stats.aprobadosF1 > 0 ? ((stats.aprobadosF2 / stats.aprobadosF1) * 100).toFixed(1) : '0'}% de F1` },
+        dropout: { name: 'No Aptos Fase 2', value: Math.max(0, stats.aprobadosF1 - stats.aprobadosF2), pct: `${stats.aprobadosF1 > 0 ? (((stats.aprobadosF1 - stats.aprobadosF2) / stats.aprobadosF1) * 100).toFixed(1) : '0'}% descarte` }
+      });
     }
 
     const isF3Active = phase.id === 'fase3-prov' || phase.id === 'fase3a-prov' || stats.aprobadosF3 > 0;
     if (isF3Active && hasF2) {
       const aptosF3Label = phase.id === 'fase3a-prov' ? 'Aptos Fase 3A' : 'Aptos Fase 3';
       const noAptosF3Label = phase.id === 'fase3a-prov' ? 'No Aptos Fase 3A' : 'No Aptos Fase 3';
-      nodes.push({ name: aptosF3Label });      // 7
-      nodes.push({ name: noAptosF3Label });   // 8
-      
       const valF3 = phase.id === 'fase3a-prov'
         ? data.filter(d => d['ESTADO PROVISIONAL FASE 3A']?.trim().toUpperCase() === 'APTO/A').length
         : stats.aprobadosF3;
 
-      links.push({ source: 5, target: 7, value: valF3 });
-      links.push({ source: 5, target: 8, value: Math.max(0, stats.aprobadosF2 - valF3) });
+      cols.push({
+        index: 4,
+        success: { name: aptosF3Label, value: valF3, pct: `${stats.aprobadosF2 > 0 ? ((valF3 / stats.aprobadosF2) * 100).toFixed(1) : '0'}% de F2` },
+        dropout: { name: noAptosF3Label, value: Math.max(0, stats.aprobadosF2 - valF3), pct: `${stats.aprobadosF2 > 0 ? (((stats.aprobadosF2 - valF3) / stats.aprobadosF2) * 100).toFixed(1) : '0'}% descarte` }
+      });
     }
 
-    return { nodes, links };
+    return cols;
   }, [data, phase, stats]);
 
-  // Custom Node component for Sankey flow
-  const CustomSankeyNode = ({ x, y, width, height, depth, payload }: any) => {
-    // Position labels on the left ONLY for the rightmost column to prevent clipping on the right edge.
-    // For all other columns, render labels on the right to prevent overlapping with previous stages.
-    const isRightmost = depth === (sankeyData.nodes.length > 7 ? 4 : sankeyData.nodes.length > 5 ? 3 : 2);
-    const textX = isRightmost ? x - 8 : x + width + 8;
-    const textAnchor = isRightmost ? 'end' : 'start';
-
-    let fill = '#94a3b8'; // Slate grey for inactive/failure flows
-    if (payload.name.startsWith('Aptos') || payload.name === 'Presentados F1' || payload.name === 'Convocados') {
-      fill = '#0099cc'; // Accent brand blue for passing flows
-    } else if (payload.name.startsWith('No ')) {
-      fill = '#cbd5e1'; // Soft desaturated slate-300
-    }
-
-    return (
-      <g>
-        <rect
-          x={x}
-          y={y}
-          width={width}
-          height={Math.max(4, height)}
-          fill={fill}
-          fillOpacity={0.85}
-          rx={3}
-          ry={3}
-          className="transition-all duration-300 hover:fill-opacity-100"
-        />
-        <text
-          x={textX}
-          y={y + height / 2 + 4}
-          textAnchor={textAnchor}
-          fontSize="10"
-          fontWeight="bold"
-          fill="#475569"
-          className="dark:fill-zinc-300"
-        >
-          {payload.name} ({payload.value.toLocaleString('es-ES')})
-        </text>
-      </g>
-    );
+  // Coordinate helper functions
+  const getX = (colIndex: number) => {
+    const numCols = columns.length;
+    const colSpacing = (960 - 156) / (numCols - 1);
+    return 20 + colIndex * colSpacing;
   };
 
-  // Custom Link component for Sankey flow
-  const CustomSankeyLink = ({
-    sourceX,
-    sourceY,
-    targetX,
-    targetY,
-    sourceControlX,
-    targetControlX,
-    linkWidth,
-    payload
-  }: any) => {
-    if (!linkWidth) return null;
+  const getBezierPath = (startX: number, startY: number, endX: number, endY: number) => {
+    const controlX1 = startX + (endX - startX) * 0.45;
+    const controlX2 = startX + (endX - startX) * 0.55;
+    return `M ${startX} ${startY} C ${controlX1} ${startY}, ${controlX2} ${endY}, ${endX} ${endY}`;
+  };
 
-    const targetName = payload.target.name;
-    const isSuccess = targetName.startsWith('Aptos') || targetName.startsWith('Presentados');
-    const strokeColor = isSuccess ? '#0099cc' : '#94a3b8';
-    const strokeOpacity = isSuccess ? 0.35 : 0.12;
+  const getThickness = (value: number) => {
+    return Math.max(3, (value / stats.convocados) * 32);
+  };
 
-    const path = `
-      M${sourceX},${sourceY}
-      C${sourceControlX},${sourceY} ${targetControlX},${targetY} ${targetX},${targetY}
-    `;
+  // Tooltip content & style helpers
+  const getTooltipStyle = (flowId: string) => {
+    const parts = flowId.split('-');
+    const sourceIndex = parseInt(parts[1], 10);
+    const type = parts[2];
+    
+    const startX = getX(sourceIndex) + 156;
+    const endX = getX(sourceIndex + 1);
+    const posX = (startX + endX) / 2;
+    
+    const startY = (sourceIndex === 0 ? 110 : 34) + 38;
+    const endY = (type === 'success' ? 34 : 210) + 38;
+    const posY = (startY + endY) / 2;
 
-    return (
-      <path
-        d={path}
-        stroke={strokeColor}
-        strokeWidth={Math.max(1.5, linkWidth)}
-        fill="none"
-        strokeOpacity={strokeOpacity}
-        className="transition-all duration-350 hover:stroke-opacity-70"
-      />
-    );
+    return {
+      left: `${posX}px`,
+      top: `${posY - 50}px`,
+      transform: 'translate(-50%, -50%)',
+      zIndex: 20
+    };
+  };
+
+  const getTooltipContent = (flowId: string) => {
+    const parts = flowId.split('-');
+    const sourceIndex = parseInt(parts[1], 10);
+    const type = parts[2];
+    
+    if (sourceIndex === 0) {
+      if (type === 'success') {
+        return (
+          <div>
+            <p className="font-bold text-slate-705 dark:text-zinc-300">Convocados → Presentados F1</p>
+            <p className="text-[#0099cc] font-black mt-1 text-xs">
+              {stats.presentadosF1.toLocaleString('es-ES')} asistentes ({((stats.presentadosF1 / stats.convocados) * 100).toFixed(1)}%)
+            </p>
+          </div>
+        );
+      } else {
+        const val = Math.max(0, stats.convocados - stats.presentadosF1);
+        return (
+          <div>
+            <p className="font-bold text-slate-705 dark:text-zinc-300">Convocados → No Presentados</p>
+            <p className="text-slate-500 dark:text-zinc-400 font-black mt-1 text-xs">
+              {val.toLocaleString('es-ES')} no asistieron ({((val / stats.convocados) * 100).toFixed(1)}%)
+            </p>
+          </div>
+        );
+      }
+    }
+    
+    if (sourceIndex === 1) {
+      if (type === 'success') {
+        return (
+          <div>
+            <p className="font-bold text-slate-705 dark:text-zinc-300">Presentados F1 → Aptos Fase 1</p>
+            <p className="text-[#0099cc] font-black mt-1 text-xs">
+              {stats.aprobadosF1.toLocaleString('es-ES')} aptos ({((stats.aprobadosF1 / stats.presentadosF1) * 100).toFixed(1)}%)
+            </p>
+          </div>
+        );
+      } else {
+        const val = Math.max(0, stats.presentadosF1 - stats.aprobadosF1);
+        return (
+          <div>
+            <p className="font-bold text-slate-705 dark:text-zinc-300">Presentados F1 → No Aptos Fase 1</p>
+            <p className="text-slate-500 dark:text-zinc-400 font-black mt-1 text-xs">
+              {val.toLocaleString('es-ES')} descartes ({((val / stats.presentadosF1) * 100).toFixed(1)}%)
+            </p>
+          </div>
+        );
+      }
+    }
+
+    if (sourceIndex === 2) {
+      if (type === 'success') {
+        return (
+          <div>
+            <p className="font-bold text-slate-705 dark:text-zinc-300">Aptos Fase 1 → Aptos Fase 2</p>
+            <p className="text-[#0099cc] font-black mt-1 text-xs">
+              {stats.aprobadosF2.toLocaleString('es-ES')} aptos ({stats.aprobadosF1 > 0 ? ((stats.aprobadosF2 / stats.aprobadosF1) * 100).toFixed(1) : 0}%)
+            </p>
+          </div>
+        );
+      } else {
+        const val = Math.max(0, stats.aprobadosF1 - stats.aprobadosF2);
+        return (
+          <div>
+            <p className="font-bold text-slate-705 dark:text-zinc-300">Aptos Fase 1 → No Aptos Fase 2</p>
+            <p className="text-slate-500 dark:text-zinc-400 font-black mt-1 text-xs">
+              {val.toLocaleString('es-ES')} descartes ({stats.aprobadosF1 > 0 ? ((val / stats.aprobadosF1) * 100).toFixed(1) : 0}%)
+            </p>
+          </div>
+        );
+      }
+    }
+
+    if (sourceIndex === 3) {
+      const valF3 = phase.id === 'fase3a-prov'
+        ? data.filter(d => d['ESTADO PROVISIONAL FASE 3A']?.trim().toUpperCase() === 'APTO/A').length
+        : stats.aprobadosF3;
+      const label = phase.id === 'fase3a-prov' ? 'Fase 3A' : 'Fase 3';
+      if (type === 'success') {
+        return (
+          <div>
+            <p className="font-bold text-slate-750 dark:text-zinc-300">Aptos Fase 2 → Aptos {label}</p>
+            <p className="text-[#0099cc] font-black mt-1 text-xs">
+              {valF3.toLocaleString('es-ES')} aptos ({stats.aprobadosF2 > 0 ? ((valF3 / stats.aprobadosF2) * 100).toFixed(1) : 0}%)
+            </p>
+          </div>
+        );
+      } else {
+        const val = Math.max(0, stats.aprobadosF2 - valF3);
+        return (
+          <div>
+            <p className="font-bold text-slate-750 dark:text-zinc-300">Aptos Fase 2 → No Aptos {label}</p>
+            <p className="text-slate-500 dark:text-zinc-400 font-black mt-1 text-xs">
+              {val.toLocaleString('es-ES')} descartes ({stats.aprobadosF2 > 0 ? ((val / stats.aprobadosF2) * 100).toFixed(1) : 0}%)
+            </p>
+          </div>
+        );
+      }
+    }
+    
+    return null;
   };
 
   const subtests = [
@@ -295,7 +346,7 @@ export default function Statistics({ data, phase }: StatisticsProps) {
       aptos: stats.cgAptos, 
       presentados: stats.presentadosF1,
       rate: stats.presentadosF1 > 0 ? ((stats.cgAptos / stats.presentadosF1) * 100).toFixed(1) : '0',
-      color: 'from-slate-400 to-slate-500',
+      color: 'from-slate-300 to-slate-400',
       lightColor: 'bg-slate-50/40 dark:bg-zinc-900/10 border-slate-200/50 dark:border-zinc-800/50',
       icon: BookOpen,
       desc: 'Evaluación de temario técnico aeronáutico y cartografía'
@@ -305,8 +356,8 @@ export default function Statistics({ data, phase }: StatisticsProps) {
       aptos: stats.ingAptos, 
       presentados: stats.presentadosF1,
       rate: stats.presentadosF1 > 0 ? ((stats.ingAptos / stats.presentadosF1) * 100).toFixed(1) : '0',
-      color: 'from-[#0099cc]/75 to-sky-500/70',
-      lightColor: 'bg-sky-50/20 dark:bg-sky-950/10 border-[#0099cc]/20 dark:border-sky-900/30',
+      color: 'from-slate-400 to-slate-500',
+      lightColor: 'bg-slate-50/40 dark:bg-zinc-900/10 border-slate-200/50 dark:border-zinc-800/50',
       icon: Languages,
       desc: 'Prueba eliminatoria escrita de gramática y comprensión'
     },
@@ -387,61 +438,172 @@ export default function Statistics({ data, phase }: StatisticsProps) {
                   : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-350'
               }`}
             >
-              Flujo del Proceso (Sankey)
+              Flujo del Proceso
             </button>
           </div>
         </div>
 
         {funnelView === 'sankey' ? (
-          <div className="h-[380px] w-full mt-4 bg-slate-50/20 dark:bg-zinc-900/10 border border-slate-100 dark:border-zinc-800/50 rounded-2xl p-6 flex items-center justify-center min-w-0">
-            {shouldRenderChart ? (
-              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                <Sankey
-                  data={sankeyData}
-                  node={<CustomSankeyNode />}
-                  link={<CustomSankeyLink />}
-                  nodePadding={24}
-                  nodeWidth={12}
-                  margin={{ top: 15, right: 130, left: 15, bottom: 15 }}
-                >
-                  <Tooltip
-                    content={({ active, payload }: any) => {
-                      if (active && payload && payload.length) {
-                        const d = payload[0].payload;
-                        if (d.source && d.target) {
-                          return (
-                            <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-850 p-3 rounded-xl shadow-xl text-xs">
-                              <p className="font-bold text-slate-700 dark:text-slate-300">
-                                {d.source.name} → {d.target.name}
-                              </p>
-                              <p className="text-[#0099cc] font-black mt-1 text-sm">
-                                {d.value.toLocaleString('es-ES')} candidatos
-                              </p>
+          <div className="w-full mt-4">
+            <div className="overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-zinc-800 -mx-6 px-6">
+              <div className="min-w-[880px] h-[320px] relative">
+                {/* SVG connection lines and HTML nodes */}
+                <svg className="w-full h-full" viewBox="0 0 1000 320" style={{ overflow: 'visible' }}>
+                  {/* Flows (Paths) */}
+                  {columns.slice(1).map((col) => {
+                    const prevCol = columns[col.index - 1];
+                    const startX = getX(prevCol.index) + 156;
+                    const startY = (prevCol.index === 0 ? 110 : 34) + 38;
+                    
+                    const endX = getX(col.index);
+                    const successEndY = 34 + 38;
+                    const dropoutEndY = 210 + 38;
+
+                    const successThickness = getThickness(col.success.value);
+                    const dropoutThickness = col.dropout ? getThickness(col.dropout.value) : 0;
+
+                    const successPath = getBezierPath(startX, startY, endX, successEndY);
+                    const dropoutPath = col.dropout ? getBezierPath(startX, startY, endX, dropoutEndY) : null;
+
+                    const successId = `flow-${prevCol.index}-success`;
+                    const dropoutId = `flow-${prevCol.index}-dropout`;
+
+                    return (
+                      <g key={col.index}>
+                        {/* Success flow connection */}
+                        <path
+                          d={successPath}
+                          fill="none"
+                          stroke="#0099cc"
+                          strokeWidth={successThickness}
+                          strokeOpacity={
+                            hoveredFlow === null
+                              ? 0.22
+                              : hoveredFlow === successId
+                              ? 0.55
+                              : 0.06
+                          }
+                          className="transition-all duration-300 cursor-pointer"
+                          onMouseEnter={() => setHoveredFlow(successId)}
+                          onMouseLeave={() => setHoveredFlow(null)}
+                        />
+
+                        {/* Dropout flow connection */}
+                        {dropoutPath && col.dropout && (
+                          <path
+                            d={dropoutPath}
+                            fill="none"
+                            stroke="#94a3b8"
+                            strokeWidth={dropoutThickness}
+                            strokeOpacity={
+                              hoveredFlow === null
+                                ? 0.12
+                                : hoveredFlow === dropoutId
+                                ? 0.35
+                                : 0.04
+                            }
+                            className="transition-all duration-300 cursor-pointer"
+                            onMouseEnter={() => setHoveredFlow(dropoutId)}
+                            onMouseLeave={() => setHoveredFlow(null)}
+                          />
+                        )}
+                      </g>
+                    );
+                  })}
+
+                  {/* Nodes (HTML inside foreignObject) */}
+                  {columns.map((col) => {
+                    const x = getX(col.index);
+                    const hasDropout = !!col.dropout;
+                    
+                    const successY = col.index === 0 ? 110 : 34;
+                    const dropoutY = 210;
+
+                    const successId = `flow-${col.index - 1}-success`;
+                    const dropoutId = `flow-${col.index - 1}-dropout`;
+
+                    return (
+                      <g key={col.index}>
+                        {/* Success Node Card */}
+                        <foreignObject
+                          x={x}
+                          y={successY}
+                          width={156}
+                          height={76}
+                          className="overflow-visible"
+                        >
+                          <div
+                            className={`bg-white dark:bg-zinc-900 border ${
+                              hoveredFlow && hoveredFlow === successId
+                                ? 'border-[#0099cc]/70 shadow-md ring-1 ring-[#0099cc]/20'
+                                : 'border-slate-200 dark:border-zinc-800 shadow-sm'
+                            } rounded-xl py-1.5 px-2.5 h-full flex flex-col justify-between select-none hover:border-[#0099cc]/40 hover:shadow-md transition-all duration-200 border-l-4 border-l-[#0099cc]`}
+                          >
+                            <div>
+                              <span className="text-[9px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-wider block truncate">
+                                {col.success.name}
+                              </span>
+                              <span className="text-base font-black text-slate-800 dark:text-slate-100 leading-tight mt-0.5 block">
+                                {col.success.value.toLocaleString('es-ES')}
+                              </span>
                             </div>
-                          );
-                        }
-                        return (
-                          <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-850 p-3 rounded-xl shadow-xl text-xs">
-                            <p className="font-bold text-slate-700 dark:text-slate-300">{d.name}</p>
-                            <p className="text-[#0099cc] font-black mt-1 text-sm">
-                              {d.value.toLocaleString('es-ES')} candidatos
-                            </p>
+                            <span className="text-[9px] text-[#0099cc] font-bold block truncate mt-0.5">
+                              {col.success.pct}
+                            </span>
                           </div>
-                        );
-                      }
-                      return null;
-                    }}
-                  />
-                </Sankey>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-full w-full flex items-center justify-center">
-                <div className="flex flex-col items-center gap-3">
-                  <div className="w-8 h-8 border-4 border-[#0099cc] border-t-transparent rounded-full animate-spin"></div>
-                  <span className="text-xs text-slate-400 font-medium">Generando diagrama de flujo...</span>
-                </div>
+                        </foreignObject>
+
+                        {/* Dropout Node Card */}
+                        {hasDropout && col.dropout && (
+                          <foreignObject
+                            x={x}
+                            y={dropoutY}
+                            width={156}
+                            height={76}
+                            className="overflow-visible"
+                          >
+                            <div
+                              className={`bg-slate-50/50 dark:bg-zinc-950/40 border ${
+                                hoveredFlow && hoveredFlow === dropoutId
+                                  ? 'border-slate-400 dark:border-zinc-650 shadow-md ring-1 ring-slate-300/20'
+                                  : 'border-slate-200/60 dark:border-zinc-850 shadow-sm'
+                              } rounded-xl py-1.5 px-2.5 h-full flex flex-col justify-between select-none hover:border-slate-400/50 hover:shadow-md transition-all duration-200 border-l-4 border-l-slate-350 dark:border-l-zinc-700`}
+                            >
+                              <div>
+                                <span className="text-[9px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-wider block truncate">
+                                  {col.dropout.name}
+                                </span>
+                                <span className="text-base font-black text-slate-650 dark:text-zinc-400 leading-tight mt-0.5 block">
+                                  {col.dropout.value.toLocaleString('es-ES')}
+                                </span>
+                              </div>
+                              <span className="text-[9px] text-slate-500 dark:text-zinc-400 font-bold block truncate mt-0.5">
+                                {col.dropout.pct}
+                              </span>
+                            </div>
+                          </foreignObject>
+                        )}
+                      </g>
+                    );
+                  })}
+                </svg>
+
+                {/* Custom interactive tooltip overlay */}
+                {hoveredFlow && (
+                  <div
+                    className="absolute bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-805 p-3 rounded-xl shadow-xl text-xs pointer-events-none transition-all duration-200 animate-in fade-in zoom-in-95 duration-150"
+                    style={getTooltipStyle(hoveredFlow)}
+                  >
+                    {getTooltipContent(hoveredFlow)}
+                  </div>
+                )}
               </div>
-            )}
+            </div>
+
+            {/* Mobile swipe helper */}
+            <div className="flex items-center gap-1.5 justify-center text-[10px] font-bold text-slate-400 dark:text-zinc-500 mt-2 sm:hidden animate-pulse">
+              <span>↔ Desliza lateralmente para explorar el flujo</span>
+            </div>
           </div>
         ) : (
           <div className={`grid grid-cols-1 ${
@@ -496,7 +658,7 @@ export default function Statistics({ data, phase }: StatisticsProps) {
                 </span>
               </div>
               <h3 className="text-3xl font-black text-slate-800 dark:text-slate-100">{stats.aprobadosF1.toLocaleString('es-ES')}</h3>
-              <p className="text-[11px] text-slate-400 mt-1">Aprobaron las 4 sub-pruebas simultáneamente</p>
+              <p className="text-[11px] text-slate-400 mt-1">Aprobaron las 4 pruebas simultáneamente</p>
             </div>
             <div className="mt-4 pt-4 border-t border-slate-100 dark:border-zinc-800 flex justify-between items-center text-xs font-bold text-slate-500">
               <span>Tasa de Aprobados</span>
@@ -559,39 +721,13 @@ export default function Statistics({ data, phase }: StatisticsProps) {
         </div>
       )}
 
-        {/* Media Aprobados por Día en Conductual (Fuera del funnel) */}
-        {phase.id === 'fase3-prov' && (
-          <div className="mt-5 p-4 bg-slate-50/50 dark:bg-zinc-900/20 border border-slate-150 dark:border-zinc-800/80 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-xs animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-slate-100 dark:bg-zinc-800 rounded-lg text-[#0099cc]">
-                <Calendar size={18} />
-              </div>
-              <div>
-                <span className="font-bold text-slate-700 dark:text-slate-200 block text-sm">Media de Aprobados por Día en Conductual (3B)</span>
-                <span className="text-[11px] text-slate-400">Promedio de candidatos aptos por jornada de evaluación en la prueba conductual.</span>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 self-stretch sm:self-auto justify-end">
-              <div className="bg-slate-105 dark:bg-zinc-850 px-3 py-2 rounded-lg border border-slate-200/50 dark:border-zinc-750 flex flex-col items-center min-w-[80px]">
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Jornadas</span>
-                <span className="font-black text-slate-800 dark:text-slate-150 text-sm mt-0.5">{stats.totalDiasF3}</span>
-              </div>
-              <div className="bg-[#0099cc]/5 dark:bg-[#0099cc]/5 px-3 py-2 rounded-lg border border-[#0099cc]/15 flex flex-col items-center min-w-[120px]">
-                <span className="text-[10px] text-[#0099cc] font-bold uppercase tracking-wider">Media de Aptos</span>
-                <span className="font-black text-[#0099cc] text-base mt-0.5">
-                  {stats.mediaAprobados3BDia.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
       </section>
 
-      {/* 2. DIFICULTAD FASE 1 - RENDER DE SUBPRUEBAS */}
+      {/* 2. DIFICULTAD FASE 1 - RENDER DE PRUEBAS */}
       <section className="bg-white dark:bg-zinc-950 rounded-2xl p-6 border border-slate-200 dark:border-zinc-800 shadow-sm">
         <h2 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
           <Brain size={16} className="text-[#0099cc]" />
-          Dificultad por Sub-prueba de la Fase 1 (Tasa de Aptos sobre Presentados)
+          Dificultad por Prueba de la Fase 1 (Tasa de Aptos sobre Presentados)
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -605,7 +741,7 @@ export default function Statistics({ data, phase }: StatisticsProps) {
                   </div>
                   <div>
                     <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 leading-tight">{test.title}</h3>
-                    <p className="text-[10px] text-slate-400 font-medium">Fase 1 Sub-test</p>
+                    <p className="text-[10px] text-slate-400 font-medium">Prueba Fase 1</p>
                   </div>
                 </div>
 
@@ -635,7 +771,7 @@ export default function Statistics({ data, phase }: StatisticsProps) {
           <div>
             <h2 className="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
               <Calendar size={16} className="text-[#0099cc]" />
-              Análisis de Sub-pruebas por Día de Examen
+              Análisis de Pruebas por Día de Examen
             </h2>
             <p className="text-xs text-slate-500 mt-1">Compara qué días fueron más o menos difíciles y la tasa de aprobación global en cada jornada.</p>
           </div>
