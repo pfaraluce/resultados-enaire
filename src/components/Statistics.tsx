@@ -136,6 +136,104 @@ export default function Statistics({ data, phase }: StatisticsProps) {
       };
     }).sort((a, b) => a.name.localeCompare(b.name));
 
+    // Phase 3B (Conductual) mode calculation
+    const emptyVals = ['#N/D', '#N/A', '---', ''];
+    const f3Dates = data.map(d => d['FECHA FASE 3']?.trim()).filter(Boolean);
+    const validF3Dates = Array.from(new Set(f3Dates)).filter(d => !emptyVals.includes(d));
+
+    const aptos3BByDate: Record<string, number> = {};
+    validF3Dates.forEach(d => {
+      aptos3BByDate[d] = 0;
+    });
+
+    data.forEach(d => {
+      const date = d['FECHA FASE 3']?.trim();
+      const resultado3B = d['RESULTADO 3 B)']?.trim().toUpperCase();
+      if (date && !emptyVals.includes(date) && resultado3B === 'APTO/A') {
+        if (aptos3BByDate[date] !== undefined) {
+          aptos3BByDate[date]++;
+        }
+      }
+    });
+
+    const counts = Object.values(aptos3BByDate);
+    let modeAptos3BDia = 0;
+    let totalDiasF3 = validF3Dates.length;
+
+    if (counts.length > 0) {
+      const frequencies: Record<number, number> = {};
+      let maxFrequency = 0;
+      counts.forEach(count => {
+        frequencies[count] = (frequencies[count] || 0) + 1;
+        if (frequencies[count] > maxFrequency) {
+          maxFrequency = frequencies[count];
+          modeAptos3BDia = count;
+        } else if (frequencies[count] === maxFrequency && count > modeAptos3BDia) {
+          modeAptos3BDia = count;
+        }
+      });
+    }
+
+    // Ranking movement calculations between Phase 2 and Phase 3
+    const parseScore = (s: string) => {
+      if (!s || s === '---' || s === '#N/A' || s === '#N/D') return -1;
+      return parseFloat(s.replace(',', '.'));
+    };
+
+    // Calculate absolute rank in F2 (among F2-Aptos)
+    const aptosF2 = data.filter(isAprobadoF2);
+    const sortedF2 = [...aptosF2].sort((a, b) => {
+      const sA = parseScore(a['F1+F2']);
+      const sB = parseScore(b['F1+F2']);
+      return sB - sA;
+    });
+    const f2RankMap = new Map<Candidate, number>();
+    sortedF2.forEach((cand, idx) => {
+      f2RankMap.set(cand, idx + 1);
+    });
+
+    // Calculate absolute rank in F3 (among F3-Aptos)
+    const aptosF3 = data.filter(isAprobadoF3);
+    const sortedF3 = [...aptosF3].sort((a, b) => {
+      const sA = parseScore(a['F1+F2+F3']);
+      const sB = parseScore(b['F1+F2+F3']);
+      return sB - sA;
+    });
+
+    let totalAbsDelta = 0;
+    let maxClimb = 0;
+    let maxDrop = 0;
+    let climbedCount = 0;
+    let droppedCount = 0;
+    let unchangedCount = 0;
+    let maxClimberName = '';
+    let maxDropperName = '';
+
+    sortedF3.forEach((cand, idx) => {
+      const f3Rank = idx + 1;
+      const f2Rank = f2RankMap.get(cand);
+      if (f2Rank !== undefined) {
+        const delta = f2Rank - f3Rank; // positive = climbed, negative = dropped
+        totalAbsDelta += Math.abs(delta);
+        if (delta > maxClimb) {
+          maxClimb = delta;
+          maxClimberName = cand['APELLIDOS Y NOMBRE'] || '';
+        }
+        if (delta < maxDrop) {
+          maxDrop = delta;
+          maxDropperName = cand['APELLIDOS Y NOMBRE'] || '';
+        }
+        if (delta > 0) climbedCount++;
+        else if (delta < 0) droppedCount++;
+        else unchangedCount++;
+      } else {
+        unchangedCount++;
+      }
+    });
+
+    const validComparisonCount = climbedCount + droppedCount + unchangedCount;
+    const avgDelta = validComparisonCount > 0 ? totalAbsDelta / validComparisonCount : 0;
+
     return {
       convocados,
       presentadosF1,
@@ -148,7 +246,19 @@ export default function Statistics({ data, phase }: StatisticsProps) {
       aptAptos,
       persAptos,
       bySede,
-      byDiaF1
+      byDiaF1,
+      modeAptos3BDia,
+      totalDiasF3,
+      rankingMovement: {
+        avgDelta,
+        maxClimb,
+        maxDrop,
+        climbedCount,
+        droppedCount,
+        unchangedCount,
+        maxClimberName,
+        maxDropperName
+      }
     };
   }, [data]);
 
@@ -722,6 +832,71 @@ export default function Statistics({ data, phase }: StatisticsProps) {
       )}
 
       </section>
+
+      {/* 1.5. DATOS ADICIONALES DE FASE 3 */}
+      {(phase.id === 'fase3-prov' || stats.aprobadosF3 > 0) && (
+        <section className="bg-white dark:bg-zinc-950 rounded-2xl p-6 border border-slate-200 dark:border-zinc-800 shadow-sm animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <h2 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+            <Award size={16} className="text-[#0099cc]" />
+            Métricas de Rendimiento y Ranking (Fase 3)
+          </h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Moda de Aprobados por Día */}
+            <div className="bg-slate-50/50 dark:bg-zinc-900/20 border border-slate-150 dark:border-zinc-800/80 rounded-xl p-5 flex flex-col justify-between">
+              <div className="flex items-start gap-4">
+                <div className="p-3 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl text-[#0099cc] shrink-0">
+                  <Calendar size={20} />
+                </div>
+                <div>
+                  <h4 className="font-bold text-slate-700 dark:text-slate-200 text-sm">Frecuencia de Aprobados en Conductual (3B)</h4>
+                  <p className="text-xs text-slate-400 dark:text-zinc-500 mt-1 leading-relaxed">
+                    Número de candidatos aptos más habitual por jornada de evaluación en la prueba conductual, calculado sobre las {stats.totalDiasF3} jornadas.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4 pt-4 border-t border-slate-100 dark:border-zinc-800 flex justify-between items-center">
+                <span className="text-xs font-bold text-slate-500">Moda de Aprobados</span>
+                <div className="bg-[#0099cc]/10 text-[#0099cc] px-3 py-1 rounded-lg border border-[#0099cc]/20 font-black text-sm">
+                  {stats.modeAptos3BDia} aptos / día
+                </div>
+              </div>
+            </div>
+
+            {/* Movimiento en el Ranking */}
+            <div className="bg-slate-50/50 dark:bg-zinc-900/20 border border-slate-150 dark:border-zinc-800/80 rounded-xl p-5 flex flex-col justify-between">
+              <div className="flex items-start gap-4">
+                <div className="p-3 bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 rounded-xl text-emerald-500 shrink-0">
+                  <TrendingUp size={20} />
+                </div>
+                <div>
+                  <h4 className="font-bold text-slate-700 dark:text-slate-200 text-sm">Movimiento del Ranking (Fase 2 ➔ Fase 3)</h4>
+                  <p className="text-xs text-slate-400 dark:text-zinc-500 mt-1 leading-relaxed">
+                    Mide el desplazamiento de puestos en la lista oficial debido a las notas de Fase 3.
+                  </p>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-[11px] font-medium text-slate-500 dark:text-zinc-400">
+                    <div>📈 Subieron: <span className="font-bold text-emerald-600 dark:text-emerald-400">{stats.rankingMovement.climbedCount}</span></div>
+                    <div>📉 Bajaron: <span className="font-bold text-amber-600 dark:text-amber-400">{stats.rankingMovement.droppedCount}</span></div>
+                    <div>⚖️ Sin cambios: <span className="font-bold text-slate-500">{stats.rankingMovement.unchangedCount}</span></div>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-4 pt-4 border-t border-slate-100 dark:border-zinc-800 flex flex-col gap-2">
+                <div className="flex justify-between items-center text-xs">
+                  <span className="font-bold text-slate-500">Desplazamiento medio</span>
+                  <span className="font-extrabold text-slate-700 dark:text-slate-350">
+                    {stats.rankingMovement.avgDelta.toFixed(1)} puestos
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-[11px]">
+                  <span className="text-slate-400">Máxima subida: <span className="font-bold text-emerald-500">+{stats.rankingMovement.maxClimb}</span></span>
+                  <span className="text-slate-400">Máxima bajada: <span className="font-bold text-amber-500">{stats.rankingMovement.maxDrop}</span></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* 2. DIFICULTAD FASE 1 - RENDER DE PRUEBAS */}
       <section className="bg-white dark:bg-zinc-950 rounded-2xl p-6 border border-slate-200 dark:border-zinc-800 shadow-sm">
