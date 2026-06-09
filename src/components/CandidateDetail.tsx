@@ -85,11 +85,43 @@ export default function CandidateDetail({ candidate, phase, onClose, onNext, onP
   // Phase 1 info:
   const hasFase1Data = candidate['TOTAL FASE 1'] !== undefined || candidate['CONOCIMIENTOS GENERALES'] !== undefined;
   const hasFase2Data = candidate['TOTAL FASE 2'] !== undefined || candidate['AULA FASE 2'] !== undefined;
-  const hasFase3Data = candidate['F1+F2+F3A'] !== undefined || candidate['INGLÉS ORAL'] !== undefined || candidate['FECHA FASE 3'] !== undefined;
+  const hasFase3Data = candidate['F1+F2+F3A'] !== undefined || candidate['INGLÉS ORAL'] !== undefined || candidate['FECHA FASE 3'] !== undefined || candidate['F1+F2+F3'] !== undefined;
+
+  const parseScoreVal = (val: any) => {
+    if (!val || val === '---' || val === '#N/A' || val === '#N/D') return 0;
+    const parsed = parseFloat(val.toString().replace(',', '.'));
+    return isNaN(parsed) ? 0 : parsed;
+  };
+
+  const getF3Score = () => {
+    if (candidate['PUNTUACIÓN 3 B)'] !== undefined) {
+      const score3A = parseScoreVal(candidate['INGLÉS ORAL']);
+      const score3B = parseScoreVal(candidate['PUNTUACIÓN 3 B)']);
+      if (score3A === 0 && score3B === 0) return '---';
+      return (score3A + score3B).toLocaleString('es-ES', { maximumFractionDigits: 2 });
+    }
+    return candidate['INGLÉS ORAL'] || '---';
+  };
+
+  const getFase3Status = () => {
+    const status3A = candidate['ESTADO PROVISIONAL FASE 3A'];
+    const status3B = candidate['RESULTADO 3 B)'];
+    const status3C = candidate['RESULTADO 3 C)'];
+
+    if (status3A === 'NO APTO/A' || status3B === 'NO APTO/A' || status3C === 'NO APTO/A') {
+      return 'NO APTO/A';
+    }
+    if (status3A === 'APTO/A' && status3B === 'APTO/A' && status3C === 'APTO/A') {
+      return 'APTO/A';
+    }
+    return status3A || 'Pendiente';
+  };
 
   // Determine active overall status
   const getOverallStatus = () => {
     const statusFields = [
+      candidate['RESULTADO 3 B)'],
+      candidate['RESULTADO 3 C)'],
       candidate['ESTADO PROVISIONAL FASE 3A'],
       candidate['ESTADO DEFINITIVO FASE 2'],
       candidate['ESTADO PROVISIONAL FASE 2'],
@@ -174,6 +206,11 @@ export default function CandidateDetail({ candidate, phase, onClose, onNext, onP
                 </div>
               )}
               {getStatusBadge(overallStatus)}
+              {phase.id === 'fase3-prov' && candidate.ranking && candidate.ranking <= 149 && (
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-450 border border-emerald-250 dark:border-emerald-900/20 animate-pulse">
+                  Provisionalmente con plaza
+                </span>
+              )}
             </div>
             <h2 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100 mt-2">
               {candidate['APELLIDOS Y NOMBRE']}
@@ -281,9 +318,9 @@ export default function CandidateDetail({ candidate, phase, onClose, onNext, onP
               {/* Phase 3 Step */}
               <div className="flex flex-col items-center text-center relative z-10">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs border ${
-                  candidate['ESTADO PROVISIONAL FASE 3A'] === 'APTO/A'
+                  getFase3Status() === 'APTO/A'
                     ? 'bg-emerald-50 dark:bg-emerald-950 border-emerald-500 text-emerald-600 dark:text-emerald-400'
-                    : candidate['ESTADO PROVISIONAL FASE 3A'] === 'NO APTO/A'
+                    : getFase3Status() === 'NO APTO/A'
                     ? 'bg-rose-50 dark:bg-rose-950 border-rose-500 text-rose-600 dark:text-rose-400'
                     : hasFase3Data
                     ? 'bg-blue-50 dark:bg-blue-950 border-[#0099cc] text-[#0099cc]'
@@ -293,7 +330,7 @@ export default function CandidateDetail({ candidate, phase, onClose, onNext, onP
                 </div>
                 <span className="text-[10px] font-bold mt-2 text-slate-700 dark:text-slate-300">Fase 3</span>
                 <span className="text-[9px] text-slate-400 dark:text-slate-500 leading-tight">
-                  {candidate['ESTADO PROVISIONAL FASE 3A'] || 'Pendiente'}
+                  {getFase3Status() || 'Pendiente'}
                 </span>
               </div>
 
@@ -303,7 +340,7 @@ export default function CandidateDetail({ candidate, phase, onClose, onNext, onP
           </div>
 
           {/* Total Provisional (F1+F2+F3A) */}
-          {overallStatus !== 'NO APTO/A' && candidate['F1+F2+F3A'] && candidate['F1+F2+F3A'] !== '---' && candidate['F1+F2+F3A'] !== '#N/D' && candidate['F1+F2+F3A'] !== '#N/A' && (
+          {phase.id === 'fase3a-prov' && overallStatus !== 'NO APTO/A' && candidate['F1+F2+F3A'] && candidate['F1+F2+F3A'] !== '---' && candidate['F1+F2+F3A'] !== '#N/D' && candidate['F1+F2+F3A'] !== '#N/A' && (
             <div className="bg-[#0099cc]/10 dark:bg-[#0099cc]/5 p-4 rounded-xl border border-[#0099cc]/20 flex justify-between items-center shadow-sm">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 rounded-lg bg-[#0099cc] text-white">
@@ -315,6 +352,55 @@ export default function CandidateDetail({ candidate, phase, onClose, onNext, onP
                 </div>
               </div>
               <span className="text-lg font-black text-[#0099cc] tabular-nums">{candidate['F1+F2+F3A']}</span>
+            </div>
+          )}
+
+          {/* Total Provisional (F1+F2+F3) and Place status */}
+          {phase.id === 'fase3-prov' && candidate.ranking && (
+            <div className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 shadow-sm ${
+              candidate.ranking <= 149
+                ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-250 dark:border-emerald-900/40 text-emerald-800 dark:text-emerald-300'
+                : 'bg-amber-50 dark:bg-amber-950/20 border-amber-250 dark:border-amber-900/40 text-amber-800 dark:text-amber-300'
+            }`}>
+              <div className="flex items-center gap-2.5">
+                <div className={`p-2 rounded-lg text-white ${
+                  candidate.ranking <= 149 ? 'bg-emerald-500' : 'bg-amber-500'
+                }`}>
+                  <Trophy size={18} />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    {candidate.ranking <= 149 ? 'Estado: Provisionalmente con Plaza' : 'Estado: Apto (Sin Plaza)'}
+                  </h4>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                    {candidate.ranking <= 149
+                      ? 'Se encuentra dentro de las 149 plazas provisionales.'
+                      : 'Superado el proceso, en espera de posibles renuncias.'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col items-end">
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Nota F1+F2+F3</span>
+                <span className="text-lg font-black text-[#0099cc] tabular-nums">{candidate['F1+F2+F3']}</span>
+              </div>
+            </div>
+          )}
+
+          {phase.id === 'fase3-prov' && !candidate.ranking && candidate['F1+F2+F3'] && candidate['F1+F2+F3'] !== '---' && (
+            <div className="bg-rose-50 dark:bg-rose-950/20 border border-rose-250 dark:border-rose-900/40 p-4 rounded-xl flex justify-between items-center shadow-sm">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-lg bg-rose-500 text-white">
+                  <X size={18} />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">Estado: No Apto / Eliminado</h4>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">No supera alguna de las subpruebas de la Fase 3.</p>
+                </div>
+              </div>
+              <div className="flex flex-col items-end">
+                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Nota F1+F2+F3</span>
+                <span className="text-lg font-black text-rose-500 tabular-nums">{candidate['F1+F2+F3']}</span>
+              </div>
             </div>
           )}
 
@@ -437,32 +523,56 @@ export default function CandidateDetail({ candidate, phase, onClose, onNext, onP
                   <Award size={14} className="text-[#0099cc]" />
                   Fase 3: Inglés, Conductual y Clínica
                 </span>
-                {candidate['INGLÉS ORAL'] && (
+                {getF3Score() !== '---' && (
                   <span className="text-xs font-black text-[#0099cc] tabular-nums">
-                    Nota F3: {candidate['INGLÉS ORAL']}
+                    Nota F3 (Inglés + Conductual): {getF3Score()}
                   </span>
                 )}
               </div>
               <div className="p-4 space-y-4">
                 <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs">
                   <div className="flex justify-between items-center border-b border-dashed border-slate-100 dark:border-zinc-800 pb-1.5">
-                    <span className="text-slate-500 dark:text-slate-400">Nota F3 (Inglés Oral)</span>
+                    <span className="text-slate-500 dark:text-slate-400">Nota 3A (Inglés Oral)</span>
                     {renderValue(candidate['INGLÉS ORAL'])}
                   </div>
                   <div className="flex justify-between items-center border-b border-dashed border-slate-100 dark:border-zinc-800 pb-1.5">
-                    <span className="text-slate-500 dark:text-slate-400">Evaluación Conductual</span>
-                    <span className="text-slate-400 dark:text-slate-500 italic">Aún por evaluar</span>
-                  </div>
-                  <div className="flex justify-between items-center border-b border-dashed border-slate-100 dark:border-zinc-800 pb-1.5">
-                    <span className="text-slate-500 dark:text-slate-400">Evaluación Clínica</span>
-                    <span className="text-slate-400 dark:text-slate-500 italic">Aún por evaluar</span>
-                  </div>
-                  <div className="flex justify-between items-center border-b border-dashed border-slate-100 dark:border-zinc-800 pb-1.5">
-                    <span className="text-slate-500 dark:text-slate-400">Estado Fase 3A</span>
+                    <span className="text-slate-500 dark:text-slate-400">Estado Fase 3A (Inglés)</span>
                     <span className="font-bold">
                       {candidate['ESTADO PROVISIONAL FASE 3A'] || '-'}
                     </span>
                   </div>
+                  {candidate['PUNTUACIÓN 3 B)'] !== undefined ? (
+                    <>
+                      <div className="flex justify-between items-center border-b border-dashed border-slate-100 dark:border-zinc-800 pb-1.5">
+                        <span className="text-slate-500 dark:text-slate-400">Puntuación 3B (Conductual)</span>
+                        {renderValue(candidate['PUNTUACIÓN 3 B)'])}
+                      </div>
+                      <div className="flex justify-between items-center border-b border-dashed border-slate-100 dark:border-zinc-800 pb-1.5">
+                        <span className="text-slate-500 dark:text-slate-400">Resultado 3B (Conductual)</span>
+                        <span className="font-bold">
+                          {candidate['RESULTADO 3 B)'] || '-'}
+                        </span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex justify-between items-center border-b border-dashed border-slate-100 dark:border-zinc-800 pb-1.5">
+                      <span className="text-slate-500 dark:text-slate-400">Evaluación Conductual</span>
+                      <span className="text-slate-400 dark:text-slate-500 italic">Aún por evaluar</span>
+                    </div>
+                  )}
+                  {candidate['RESULTADO 3 C)'] !== undefined ? (
+                    <div className="flex justify-between items-center border-b border-dashed border-slate-100 dark:border-zinc-800 pb-1.5">
+                      <span className="text-slate-500 dark:text-slate-400">Resultado 3C (Clínica)</span>
+                      <span className="font-bold">
+                        {candidate['RESULTADO 3 C)'] || '-'}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex justify-between items-center border-b border-dashed border-slate-100 dark:border-zinc-800 pb-1.5">
+                      <span className="text-slate-500 dark:text-slate-400">Evaluación Clínica</span>
+                      <span className="text-slate-400 dark:text-slate-500 italic">Aún por evaluar</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Logistics */}

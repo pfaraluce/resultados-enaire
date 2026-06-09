@@ -47,6 +47,11 @@ const FASE_1_COLUMNS: ColumnDef[] = [
   { key: 'ESTADO PROVISIONAL FASE 3A', label: 'Estado F3A', group: 'fase3' },
   { key: 'INGLÉS ORAL', label: 'Inglés Oral', group: 'fase3' },
   { key: 'F1+F2+F3A', label: 'Total F1+F2+F3A', group: 'fase3' },
+  // Phase 3B and 3C columns added:
+  { key: 'RESULTADO 3 B)', label: 'Resultado 3B', group: 'fase3' },
+  { key: 'PUNTUACIÓN 3 B)', label: 'Conductual 3B', group: 'fase3' },
+  { key: 'RESULTADO 3 C)', label: 'Resultado 3C', group: 'fase3' },
+  { key: 'F1+F2+F3', label: 'Total F1+F2+F3', group: 'fase3' },
 ];
 
 // Helper: check if any header contains a keyword (case-insensitive)
@@ -71,7 +76,8 @@ function filterByHeaders(phase: PhaseConfig, headers: string[]): PhaseConfig {
 /**
  * Detect the current phase from CSV column headers.
  * Sequential logic (highest phase first):
- *   0. "FASE 3A"  → check F1+F2+F3A etc. → Fase 3A Provisional
+ *   0. "FASE 3"   → check F1+F2+F3 etc. → Fase 3 Provisional (with 3B and 3C)
+ *   0.5. "FASE 3A" → check F1+F2+F3A etc. → Fase 3A Provisional
  *   1. "FASE 1" + "FASE 2" + "PROVISIONAL" → Fase 1+2 Provisionales (suma F1+F2)
  *   2. "FASE 3" → check "PROVISIONAL" → Fase 3 Prov / Fase 3 Def
  *   3. "ORAL"   → Fase 3 Prueba A
@@ -84,9 +90,31 @@ export function detectPhase(headers: string[]): PhaseConfig {
   const isProvisional = hasKeyword(upperHeaders, 'PROVISIONAL');
   const hasFase1 = hasKeyword(upperHeaders, 'FASE 1');
   const hasFase2 = hasKeyword(upperHeaders, 'FASE 2');
+  const hasFase3 = upperHeaders.includes('F1+F2+F3') || upperHeaders.includes('RESULTADO 3 B)') || upperHeaders.includes('PUNTUACIÓN 3 B)') || upperHeaders.includes('RESULTADO 3 C)');
   const hasFase3A = upperHeaders.includes('F1+F2+F3A') || upperHeaders.includes('ESTADO PROVISIONAL FASE 3A') || upperHeaders.includes('INGLÉS ORAL');
 
-  // 0. FASE 3A - Resultados Provisionales (highest priority)
+  // 0. FASE 3 - Resultados Provisionales (highest priority, matches F1+F2+F3)
+  if (hasFase3) {
+    return filterByHeaders({
+      id: 'fase3-prov',
+      label: 'Fase 3 - Resultados Provisionales',
+      badgeText: 'Fase 3 - Provisional',
+      scoreColumn: 'F1+F2+F3',
+      statusColumn: 'RESULTADO 3 B)',
+      columns: FASE_1_COLUMNS,
+      defaultVisibleColumns: [
+        'APELLIDOS Y NOMBRE',
+        'F1+F2+F3',
+        'PUNTUACIÓN 3 B)',
+        'INGLÉS ORAL',
+        'RESULTADO 3 B)',
+        'RESULTADO 3 C)',
+      ],
+      sortableColumns: ['TOTAL FASE 1', 'TOTAL FASE 2', 'F1+F2', 'F1+F2+F3', 'INGLÉS ORAL', 'PUNTUACIÓN 3 B)', 'CONOCIMIENTOS GENERALES', 'CONOCIMIENTOS IDIOMA INGLÉS', 'APTITUDES'],
+    }, headers);
+  }
+
+  // 0.5. FASE 3A - Resultados Provisionales (second priority)
   if (hasFase3A) {
     return filterByHeaders({
       id: 'fase3a-prov',

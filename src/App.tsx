@@ -85,10 +85,24 @@ export default function App() {
               return parseFloat(s.replace(',', '.'));
             };
 
+            const isAptoFase3 = (item: Candidate) => {
+              const s3A = item['ESTADO PROVISIONAL FASE 3A']?.trim().toUpperCase();
+              const s3B = item['RESULTADO 3 B)']?.trim().toUpperCase();
+              const s3C = item['RESULTADO 3 C)']?.trim().toUpperCase();
+              return s3A === 'APTO/A' && s3B === 'APTO/A' && s3C === 'APTO/A';
+            };
+
             let rankedData: Candidate[];
 
             if (scoreCol) {
-              const sortedForRanking = [...rawData].sort((a, b) => {
+              let sortedForRanking = [...rawData];
+
+              if (detectedPhase.id === 'fase3-prov') {
+                // Only rank candidates who are APTO in all parts of Phase 3
+                sortedForRanking = sortedForRanking.filter(isAptoFase3);
+              }
+
+              sortedForRanking.sort((a, b) => {
                 const scoreA = parseScore(a[scoreCol]);
                 const scoreB = parseScore(b[scoreCol]);
                 return scoreB - scoreA;
@@ -104,6 +118,7 @@ export default function App() {
 
               // For fase1y2-prov: also compute a secondary ranking by TOTAL FASE 1 alone
               // For fase3a-prov: also compute a secondary ranking by F1+F2 (for comparison delta)
+              // For fase3-prov: also compute a secondary ranking by F1+F2 + INGLÉS ORAL (for comparison delta with Fase 3A)
               let rankF1Map = new Map();
               if (detectedPhase.id === 'fase1y2-prov') {
                 const sortedByF1 = [...rawData].sort((a, b) => {
@@ -124,6 +139,29 @@ export default function App() {
                 });
                 sortedByF1y2.forEach((item, index) => {
                   if (parseScore(item['F1+F2']) !== -1) {
+                    rankF1Map.set(item, index + 1);
+                  }
+                });
+              } else if (detectedPhase.id === 'fase3-prov') {
+                const isAptoF3A = (item: Candidate) => item['ESTADO PROVISIONAL FASE 3A']?.trim().toUpperCase() === 'APTO/A';
+                
+                const getScore3A = (item: Candidate) => {
+                  const f1f2 = parseScore(item['F1+F2']);
+                  const ingOral = parseScore(item['INGLÉS ORAL']);
+                  if (f1f2 === -1 || ingOral === -1) return -1;
+                  return f1f2 + ingOral;
+                };
+
+                const sortedByF3A = [...rawData]
+                  .filter(isAptoF3A)
+                  .sort((a, b) => {
+                    const sA = getScore3A(a);
+                    const sB = getScore3A(b);
+                    return sB - sA;
+                  });
+
+                sortedByF3A.forEach((item, index) => {
+                  if (getScore3A(item) !== -1) {
                     rankF1Map.set(item, index + 1);
                   }
                 });
@@ -220,6 +258,44 @@ export default function App() {
         const key = sortConfig.key;
         const aValueRaw = key === 'ranking' ? a.ranking : a[key];
         const bValueRaw = key === 'ranking' ? b.ranking : b[key];
+
+        // Custom hierarchal sorting for Phase 3 ranking
+        if (phase?.id === 'fase3-prov' && key === 'ranking') {
+          const parseScore = (val: any) => {
+            if (!val || val === '---' || val === '#N/A' || val === '#N/D') return null;
+            const num = parseFloat(val.toString().replace(',', '.'));
+            return isNaN(num) ? null : num;
+          };
+
+          const getCategory = (item: Candidate) => {
+            if (item.ranking !== undefined) return 1;
+            if (parseScore(item['F1+F2+F3']) !== null) return 2;
+            return 3;
+          };
+
+          const catA = getCategory(a);
+          const catB = getCategory(b);
+
+          if (catA !== catB) {
+            return catA - catB;
+          }
+
+          if (catA === 1) {
+            return sortConfig.direction === 'asc'
+              ? (a.ranking || 0) - (b.ranking || 0)
+              : (b.ranking || 0) - (a.ranking || 0);
+          }
+
+          if (catA === 2) {
+            const scoreA = parseScore(a['F1+F2+F3']) || 0;
+            const scoreB = parseScore(b['F1+F2+F3']) || 0;
+            return sortConfig.direction === 'asc' ? scoreB - scoreA : scoreA - scoreB;
+          }
+
+          const nameA = String(a['APELLIDOS Y NOMBRE'] || '');
+          const nameB = String(b['APELLIDOS Y NOMBRE'] || '');
+          return nameA.localeCompare(nameB, 'es', { sensitivity: 'accent' });
+        }
 
         // Sortable columns from phase config + ranking are treated as numeric
         const numericColumns = [...(phase?.sortableColumns || []), 'ranking'];
@@ -582,7 +658,11 @@ export default function App() {
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             layout
-                            className="hover:bg-blue-50/30 dark:hover:bg-blue-900/10 cursor-pointer transition-colors"
+                            className={`hover:bg-blue-50/30 dark:hover:bg-blue-900/10 cursor-pointer transition-colors ${
+                              phase?.id === 'fase3-prov' && candidate.ranking && candidate.ranking <= 149
+                                ? 'bg-emerald-50/45 dark:bg-emerald-950/20 border-l-2 border-emerald-500'
+                                : ''
+                            }`}
                             onClick={() => setSelectedCandidate(candidate)}
                           >
                             {scoreColumn && (
@@ -603,10 +683,10 @@ export default function App() {
                               if (!col) return null;
                               return (
                                 <td key={col.key} className="px-3 py-1.5 text-[11px] truncate">
-                                  {col.key === statusColumn ? (
-                                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide ${candidate[col.key] === 'APTO/A'
+                                  {col.key === statusColumn || col.key.includes('RESULTADO') || col.key.includes('ESTADO') ? (
+                                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide ${candidate[col.key] === 'APTO/A' || candidate[col.key] === 'APTO'
                                       ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
-                                      : candidate[col.key] === 'NO APTO/A'
+                                      : candidate[col.key] === 'NO APTO/A' || candidate[col.key] === 'NO APTO'
                                         ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
                                         : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-slate-400'
                                       }`}>

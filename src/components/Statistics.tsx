@@ -60,6 +60,14 @@ export default function Statistics({ data, phase }: StatisticsProps) {
     const isAprobadoF2 = (d: Candidate) =>
       (d['ESTADO DEFINITIVO FASE 2'] || d['ESTADO PROVISIONAL FASE 2'])?.trim().toUpperCase() === 'APTO/A';
 
+    // Phase 3 Helper
+    const isAprobadoF3 = (d: Candidate) => {
+      const s3A = d['ESTADO PROVISIONAL FASE 3A']?.trim().toUpperCase();
+      const s3B = d['RESULTADO 3 B)']?.trim().toUpperCase();
+      const s3C = d['RESULTADO 3 C)']?.trim().toUpperCase();
+      return s3A === 'APTO/A' && s3B === 'APTO/A' && s3C === 'APTO/A';
+    };
+
     // Core Metrics
     const presentadosF1 = data.filter(isPresentadoF1).length;
     const noPresentadosF1 = convocados - presentadosF1;
@@ -67,6 +75,9 @@ export default function Statistics({ data, phase }: StatisticsProps) {
     
     // Aptos in F2 (we count APTO/A in F2 columns)
     const aprobadosF2 = data.filter(isAprobadoF2).length;
+
+    // Aptos in F3
+    const aprobadosF3 = data.filter(isAprobadoF3).length;
 
     // Sub-test passes among presentees
     const cgAptos = data.filter(d => isPresentadoF1(d) && isAprobadoCG(d)).length;
@@ -82,15 +93,18 @@ export default function Statistics({ data, phase }: StatisticsProps) {
       const sPresentados = sData.filter(isPresentadoF1).length;
       const sAprobadosF1 = sData.filter(isAprobadoF1).length;
       const sAprobadosF2 = sData.filter(isAprobadoF2).length;
+      const sAprobadosF3 = sData.filter(isAprobadoF3).length;
       return {
         name: sede,
         Convocados: sData.length,
         Presentados: sPresentados,
         AprobadosF1: sAprobadosF1,
         AprobadosF2: sAprobadosF2,
+        AprobadosF3: sAprobadosF3,
         '% Asistencia': sData.length > 0 ? Math.round((sPresentados / sData.length) * 100) : 0,
         '% Aprobados F1': sPresentados > 0 ? Math.round((sAprobadosF1 / sPresentados) * 100) : 0,
-        '% Aprobados F2': sAprobadosF1 > 0 ? Math.round((sAprobadosF2 / sAprobadosF1) * 100) : 0
+        '% Aprobados F2': sAprobadosF1 > 0 ? Math.round((sAprobadosF2 / sAprobadosF1) * 100) : 0,
+        '% Aprobados F3': sAprobadosF2 > 0 ? Math.round((sAprobadosF3 / sAprobadosF2) * 100) : 0
       };
     }).sort((a, b) => b.Convocados - a.Convocados);
 
@@ -126,6 +140,7 @@ export default function Statistics({ data, phase }: StatisticsProps) {
       noPresentadosF1,
       aprobadosF1,
       aprobadosF2,
+      aprobadosF3,
       cgAptos,
       ingAptos,
       aptAptos,
@@ -214,7 +229,11 @@ export default function Statistics({ data, phase }: StatisticsProps) {
           Funnel de Selección Acumulado
         </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 relative">
+        <div className={`grid grid-cols-1 ${
+          phase.id === 'fase3-prov' || phase.id === 'fase3a-prov' || stats.aprobadosF3 > 0
+            ? 'sm:grid-cols-2 lg:grid-cols-5'
+            : 'sm:grid-cols-2 lg:grid-cols-4'
+        } gap-4 relative`}>
           
           {/* Step 1: Convocados */}
           <div className="bg-slate-50 dark:bg-zinc-900/30 border border-slate-100 dark:border-zinc-800 rounded-xl p-5 relative overflow-hidden flex flex-col justify-between">
@@ -287,6 +306,40 @@ export default function Statistics({ data, phase }: StatisticsProps) {
               <span className="text-teal-500">{stats.aprobadosF1 > 0 ? ((stats.aprobadosF2 / stats.aprobadosF1) * 100).toFixed(1) : '0'}%</span>
             </div>
           </div>
+
+          {/* Step 5: Aptos F3 */}
+          {(phase.id === 'fase3-prov' || phase.id === 'fase3a-prov' || stats.aprobadosF3 > 0) && (
+            <div className="bg-slate-50 dark:bg-zinc-900/30 border border-slate-100 dark:border-zinc-800 rounded-xl p-5 relative overflow-hidden flex flex-col justify-between">
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                    {phase.id === 'fase3a-prov' ? '5. Aptos Fase 3A' : '5. Aptos Fase 3'}
+                  </span>
+                  <span className="p-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400">
+                    <Award size={16} />
+                  </span>
+                </div>
+                <h3 className="text-3xl font-black text-slate-800 dark:text-slate-100">
+                  {phase.id === 'fase3a-prov'
+                    ? data.filter(d => d['ESTADO PROVISIONAL FASE 3A']?.trim().toUpperCase() === 'APTO/A').length.toLocaleString('es-ES')
+                    : stats.aprobadosF3.toLocaleString('es-ES')}
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  {phase.id === 'fase3a-prov'
+                    ? 'Superaron la prueba oral de inglés (Fase 3A)'
+                    : 'Aprobados en Inglés Oral, Conductual y Clínica'}
+                </p>
+              </div>
+              <div className="mt-4 pt-4 border-t border-slate-100 dark:border-zinc-800 flex justify-between items-center text-xs font-bold text-slate-500">
+                <span>Tasa de Aprobados F3</span>
+                <span className="text-emerald-500">
+                  {stats.aprobadosF2 > 0
+                    ? `${(( (phase.id === 'fase3a-prov' ? data.filter(d => d['ESTADO PROVISIONAL FASE 3A']?.trim().toUpperCase() === 'APTO/A').length : stats.aprobadosF3) / stats.aprobadosF2) * 100).toFixed(1)}%`
+                    : '0%'}
+                </span>
+              </div>
+            </div>
+          )}
 
         </div>
       </section>
@@ -390,7 +443,11 @@ export default function Statistics({ data, phase }: StatisticsProps) {
               </div>
 
               <div className="space-y-4">
-                <div className="grid grid-cols-3 gap-2 text-center">
+                <div className={`grid ${
+                  phase.id === 'fase3-prov' || phase.id === 'fase3a-prov' || stats.aprobadosF3 > 0
+                    ? 'grid-cols-4'
+                    : 'grid-cols-3'
+                } gap-2 text-center`}>
                   <div>
                     <span className="text-[10px] font-bold text-slate-400 uppercase block">Convocados</span>
                     <span className="text-base font-black text-slate-700 dark:text-slate-300">{sede.Convocados}</span>
@@ -401,8 +458,14 @@ export default function Statistics({ data, phase }: StatisticsProps) {
                   </div>
                   <div>
                     <span className="text-[10px] font-bold text-slate-400 uppercase block">Aprobados F1</span>
-                    <span className="text-base font-black text-emerald-500">{sede.AprobadosF1}</span>
+                    <span className="text-base font-black text-[#0099cc]">{sede.AprobadosF1}</span>
                   </div>
+                  {(phase.id === 'fase3-prov' || phase.id === 'fase3a-prov' || stats.aprobadosF3 > 0) && (
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase block">Aprobados F3</span>
+                      <span className="text-base font-black text-emerald-500">{sede.AprobadosF3}</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -432,9 +495,21 @@ export default function Statistics({ data, phase }: StatisticsProps) {
                       <span className="text-teal-500">{sede['% Aprobados F2']}%</span>
                     </div>
                     <div className="w-full bg-slate-200 dark:bg-zinc-850 h-2 rounded-full overflow-hidden mt-1">
-                      <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${sede['% Aprobados F2']}%` }} />
+                      <div className="bg-teal-500 h-full rounded-full" style={{ width: `${sede['% Aprobados F2']}%` }} />
                     </div>
                   </div>
+
+                  {(phase.id === 'fase3-prov' || phase.id === 'fase3a-prov' || stats.aprobadosF3 > 0) && (
+                    <div>
+                      <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase">
+                        <span>Aptos F3 (sobre F2)</span>
+                        <span className="text-emerald-500">{sede['% Aprobados F3']}%</span>
+                      </div>
+                      <div className="w-full bg-slate-200 dark:bg-zinc-850 h-2 rounded-full overflow-hidden mt-1">
+                        <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${sede['% Aprobados F3']}%` }} />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
