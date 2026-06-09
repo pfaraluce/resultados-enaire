@@ -4,12 +4,20 @@ Herramienta no oficial diseñada para facilitar la consulta y el análisis del r
 
 Este proyecto permite la lectura rápida mediante filtros por sede o estado de la candidatura, y provee una pantalla de métricas y estadísticas de asistencia.
 
-## Características
+## Características principales
 
-- Búsqueda rápida de candidatos por apellidos o nombre
-- Filtros por sede de examen y estado de la candidatura (Apto/No Apto/No Presentado)
-- Ordenación por diferentes métricas (Ranking, Conocimientos, Test de inglés...)
-- Dashboard con estadísticas y porcentaje de aprobados y presentados
+- **Buscador Inteligente**: Localización instantánea de candidatos mediante búsqueda por nombre o apellidos. Admite atajo de teclado (`Ctrl + F` o `Cmd + F`) para enfocar el cuadro de búsqueda rápidamente.
+- **Filtros y Columnas Personalizables**:
+  - Filtrado por sedes de examen oficiales y estado de la candidatura (Apto, No Apto, No Presentado).
+  - Selector dinámico de columnas para adaptar la tabla de resultados a las métricas de interés.
+- **Ordenación Multimétrica**: Clasificación interactiva del listado por orden de mérito/ranking, notas globales de cada fase, o resultados individuales de pruebas específicas (Conocimientos, Inglés, Aptitudes, Personalidad).
+- **Dashboard de Estadísticas**:
+  - Análisis de rendimiento y asistencia distribuido por sedes de examen.
+  - Funnel interactivo del proceso selectivo global (vista resumen y diagrama de flujo Sankey).
+  - Métricas avanzadas como la frecuencia de aprobados por jornada o la variación/movimiento en el ranking oficial tras las diferentes fases.
+- **Consulta de Aulas**: Panel específico para localizar la asignación de edificios, aulas e información de citación de cada candidato para el desarrollo de las pruebas presenciales.
+- **Expediente Detallado del Candidato**: Ficha individual en formato modal que consolida el progreso completo del aspirante a lo largo de las distintas fases del proceso selectivo.
+- **Exportación a PDF**: Botón de descarga directa que genera un documento de expediente en formato A4 optimizado. Sigue la identidad visual corporativa en tema claro y recopila de manera ordenada las calificaciones y logística del candidato.
 
 ## Tecnologías Utilizadas
 
@@ -22,6 +30,7 @@ Este proyecto es una SPA (Single Page Application) construida con las siguientes
 - **Motion (framer-motion)** para animaciones de interfaz
 - **Recharts** para componentes de datos estadísticos
 - **PapaParse** para lectura asíncrona de los datos en formato CSV
+- **jsPDF** para la generación dinámica del PDF de la ficha del candidato
 
 ## Instalación y Desarrollo Local
 

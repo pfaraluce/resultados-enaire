@@ -701,7 +701,7 @@ export default function Statistics({ data, phase }: StatisticsProps) {
                 {/* Custom interactive tooltip overlay */}
                 {hoveredFlow && (
                   <div
-                    className="absolute bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-805 p-3 rounded-xl shadow-xl text-xs pointer-events-none transition-all duration-200 animate-in fade-in zoom-in-95 duration-150"
+                    className="absolute bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-805 p-3 rounded-xl shadow-xl text-xs pointer-events-none transition-all duration-200 animate-in fade-in zoom-in-95"
                     style={getTooltipStyle(hoveredFlow)}
                   >
                     {getTooltipContent(hoveredFlow)}
@@ -911,7 +911,7 @@ export default function Statistics({ data, phase }: StatisticsProps) {
             return (
               <div key={index} className={`rounded-xl border p-5 transition-all duration-300 hover:-translate-y-1 ${test.lightColor}`}>
                 <div className="flex items-center gap-3 mb-4">
-                  <div className={`p-2.5 rounded-lg bg-gradient-to-br ${test.color} text-white`}>
+                  <div className={`p-2.5 rounded-lg bg-linear-to-br ${test.color} text-white`}>
                     <Icon size={18} />
                   </div>
                   <div>
@@ -928,7 +928,7 @@ export default function Statistics({ data, phase }: StatisticsProps) {
                   
                   <div className="w-full bg-slate-200 dark:bg-zinc-800 rounded-full h-2.5 overflow-hidden">
                     <div 
-                      className={`bg-gradient-to-r ${test.color} h-full rounded-full transition-all duration-1000`}
+                      className={`bg-linear-to-r ${test.color} h-full rounded-full transition-all duration-1000`}
                       style={{ width: `${test.rate}%` }}
                     />
                   </div>

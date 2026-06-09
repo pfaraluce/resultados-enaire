@@ -1,5 +1,6 @@
-import { X, Trophy, MapPin, Calendar, FileText, ChevronRight, User, Award, Percent, Link, Check, ChevronLeft } from 'lucide-react';
+import { X, Trophy, MapPin, Calendar, FileText, ChevronRight, User, Award, Percent, Link, Check, ChevronLeft, Download } from 'lucide-react';
 import { motion } from 'motion/react';
+import { jsPDF } from 'jspdf';
 import { useState, useEffect } from 'react';
 import { Candidate } from '../App';
 import { PhaseConfig } from '../phaseConfig';
@@ -164,6 +165,347 @@ export default function CandidateDetail({ candidate, phase, onClose, onNext, onP
 
   const overallStatus = getOverallStatus();
 
+  const handleDownloadPDF = () => {
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    // 1. Top brand accent line
+    doc.setFillColor(0, 153, 204); // Enaire blue
+    doc.rect(15, 15, 180, 1.5, 'F');
+
+    let y = 24;
+
+    // 2. Pre-title/badge info
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(0, 153, 204);
+    doc.text('CONVOCATORIA SELECCIÓN CONTROLADORES ENAIRE 2025', 15, y);
+    y += 6;
+
+    // 3. Candidate Name
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(18);
+    doc.setTextColor(15, 23, 42); // slate-900
+    doc.text(candidate['APELLIDOS Y NOMBRE'], 15, y);
+    y += 7;
+
+    // 4. Candidate Sub-metadata
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.setTextColor(100, 116, 139); // slate-500
+    let metaText = `ID: ${candidate.IDENTIFICADOR || '-'}`;
+    if (candidate['SEDE DE EXAMEN FASE 1']) {
+      metaText += `   |   Sede Examen F1: ${candidate['SEDE DE EXAMEN FASE 1']}`;
+    }
+    doc.text(metaText, 15, y);
+    y += 8;
+
+    // 5. Banner: Ranking and Overall Status
+    const overallStatusVal = overallStatus;
+    const cleanStatus = overallStatusVal.trim().toUpperCase();
+    let statusRGB = [100, 116, 139]; // default slate-500
+
+    if (cleanStatus.includes('APTO') && !cleanStatus.includes('NO APTO')) {
+      statusRGB = [5, 150, 105]; // emerald-600
+    } else if (cleanStatus.includes('NO APTO')) {
+      statusRGB = [220, 38, 38]; // red-600
+    }
+
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(15, y, 180, 16, 2, 2, 'FD');
+
+    // Ranking info inside banner
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(100, 116, 139);
+    doc.text('PUESTO EN EL RANKING', 20, y + 5.5);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(15, 23, 42);
+    const rankingText = candidate.ranking ? `Puesto ${candidate.ranking}` : 'Sin Ranking';
+    doc.text(rankingText, 20, y + 11);
+
+    // Overall Status info inside banner
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(100, 116, 139);
+    doc.text('ESTADO GENERAL DEL CANDIDATO', 110, y + 5.5);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(statusRGB[0], statusRGB[1], statusRGB[2]);
+    doc.text(overallStatusVal, 110, y + 11);
+
+    y += 24;
+
+    // 6. Progress Timeline
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(100, 116, 139);
+    doc.text('PROGRESO EN EL PROCESO SELECTIVO', 15, y);
+    y += 6;
+
+    // Draw connecting timeline line
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.8);
+    doc.line(45, y + 4, 165, y + 4);
+
+    const drawTimelineStep = (cx: number, cy: number, num: number, label: string, statusText: string, state: 'APTO' | 'NOAPTO' | 'HASDATA' | 'PENDIENTE') => {
+      // Circle fill
+      let circleFillRGB = [200, 200, 200];
+      if (state === 'APTO') circleFillRGB = [5, 150, 105];
+      else if (state === 'NOAPTO') circleFillRGB = [220, 38, 38];
+      else if (state === 'HASDATA') circleFillRGB = [0, 153, 204];
+
+      doc.setFillColor(circleFillRGB[0], circleFillRGB[1], circleFillRGB[2]);
+      doc.circle(cx, cy + 4, 4, 'F');
+
+      // Circle number
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(255, 255, 255);
+      doc.text(String(num), cx, cy + 4, { align: 'center', baseline: 'middle' });
+
+      // Label below circle
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(15, 23, 42);
+      doc.text(label, cx, cy + 13, { align: 'center' });
+
+      // Status text below label
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      doc.setTextColor(100, 116, 139);
+      doc.text(statusText, cx, cy + 17, { align: 'center' });
+    };
+
+    // Calculate step states
+    const f1StateText = candidate['ESTADO DEFINITIVO FASE 1'] || candidate['ESTADO PROVISIONAL'];
+    const f1State = (f1StateText === 'APTO/A' || f1StateText === 'APTO') ? 'APTO' 
+      : (f1StateText === 'NO APTO/A' || f1StateText === 'NO APTO') ? 'NOAPTO'
+      : hasFase1Data ? 'HASDATA' : 'PENDIENTE';
+
+    const f2StateText = candidate['ESTADO DEFINITIVO FASE 2'] || candidate['ESTADO PROVISIONAL FASE 2'];
+    const f2State = (f2StateText === 'APTO/A' || f2StateText === 'APTO') ? 'APTO'
+      : (f2StateText === 'NO APTO/A' || f2StateText === 'NO APTO') ? 'NOAPTO'
+      : hasFase2Data ? 'HASDATA' : 'PENDIENTE';
+
+    const f3StateText = getFase3Status();
+    const f3State = (f3StateText === 'APTO/A' || f3StateText === 'APTO') ? 'APTO'
+      : (f3StateText === 'NO APTO/A' || f3StateText === 'NO APTO') ? 'NOAPTO'
+      : hasFase3Data ? 'HASDATA' : 'PENDIENTE';
+
+    drawTimelineStep(45, y, 1, 'Fase 1', f1StateText || (hasFase1Data ? 'Presentado' : 'Pendiente'), f1State);
+    drawTimelineStep(105, y, 2, 'Fase 2', f2StateText || (hasFase2Data ? 'Presentado' : 'Pendiente'), f2State);
+    drawTimelineStep(165, y, 3, 'Fase 3', f3StateText || 'Pendiente', f3State);
+
+    y += 26;
+
+    // 7. Totals Provisional / Placement banners (before details)
+    if (phase.id === 'fase3a-prov' && overallStatusVal !== 'NO APTO/A' && candidate['F1+F2+F3A'] && candidate['F1+F2+F3A'] !== '---' && candidate['F1+F2+F3A'] !== '#N/D' && candidate['F1+F2+F3A'] !== '#N/A') {
+      doc.setFillColor(230, 245, 250);
+      doc.setDrawColor(180, 230, 245);
+      doc.setLineWidth(0.3);
+      doc.roundedRect(15, y, 180, 12, 2, 2, 'FD');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(30, 41, 59);
+      doc.text('Total Provisional (F1+F2+F3A) - Suma ponderada acumulada', 20, y + 7.5);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.setTextColor(0, 153, 204);
+      doc.text(String(candidate['F1+F2+F3A']), 190, y + 8, { align: 'right' });
+
+      y += 18;
+    } else if (phase.id === 'fase3-prov') {
+      if (candidate.ranking) {
+        const isPlaza = candidate.ranking <= 149;
+        const bannerBgRGB = isPlaza ? [236, 253, 245] : [255, 251, 235];
+        const bannerBorderRGB = isPlaza ? [167, 243, 208] : [253, 230, 138];
+        const badgeTextRGB = isPlaza ? [5, 150, 105] : [217, 119, 6];
+
+        doc.setFillColor(bannerBgRGB[0], bannerBgRGB[1], bannerBgRGB[2]);
+        doc.setDrawColor(bannerBorderRGB[0], bannerBorderRGB[1], bannerBorderRGB[2]);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(15, y, 180, 14, 2, 2, 'FD');
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.setTextColor(badgeTextRGB[0], badgeTextRGB[1], badgeTextRGB[2]);
+        doc.text(isPlaza ? 'Estado: Provisionalmente con Plaza' : 'Estado: Apto (Sin Plaza)', 20, y + 5.5);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        doc.setTextColor(100, 116, 139);
+        doc.text(isPlaza ? 'Se encuentra dentro de las 149 plazas provisionales.' : 'Superado el proceso, en espera de posibles renuncias.', 20, y + 10);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        doc.setTextColor(100, 116, 139);
+        doc.text('Nota F1+F2+F3', 190, y + 4.5, { align: 'right' });
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.setTextColor(0, 153, 204);
+        doc.text(String(candidate['F1+F2+F3']), 190, y + 10.5, { align: 'right' });
+
+        y += 20;
+      } else if (candidate['F1+F2+F3'] && candidate['F1+F2+F3'] !== '---') {
+        // No Apto / Eliminado
+        doc.setFillColor(254, 242, 242);
+        doc.setDrawColor(254, 202, 202);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(15, y, 180, 14, 2, 2, 'FD');
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.setTextColor(220, 38, 38);
+        doc.text('Estado: No Apto / Eliminado', 20, y + 5.5);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        doc.setTextColor(100, 116, 139);
+        doc.text('No supera alguna de las subpruebas de la Fase 3.', 20, y + 10);
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        doc.setTextColor(100, 116, 139);
+        doc.text('Nota F1+F2+F3', 190, y + 4.5, { align: 'right' });
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.setTextColor(220, 38, 38);
+        doc.text(String(candidate['F1+F2+F3']), 190, y + 10.5, { align: 'right' });
+
+        y += 20;
+      }
+    }
+
+    // Card drawing helper
+    const drawCard = (title: string, rightText: string, yPos: number, height: number) => {
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(226, 232, 240);
+      doc.setLineWidth(0.3);
+      doc.roundedRect(15, yPos, 180, height, 2, 2, 'FD');
+
+      doc.setFillColor(241, 245, 249);
+      doc.roundedRect(15, yPos, 180, 8, 2, 2, 'F');
+      doc.rect(15, yPos + 4, 180, 4, 'F');
+
+      doc.setDrawColor(226, 232, 240);
+      doc.line(15, yPos + 8, 195, yPos + 8);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(51, 65, 85);
+      doc.text(title, 20, yPos + 5.5);
+
+      if (rightText) {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8);
+        doc.setTextColor(0, 153, 204);
+        doc.text(rightText, 190, yPos + 5.5, { align: 'right' });
+      }
+    };
+
+    const drawGridValue = (x: number, yPos: number, label: string, val: any) => {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      doc.setTextColor(100, 116, 139);
+      doc.text(label, x, yPos);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(15, 23, 42);
+
+      let displayVal = '-';
+      if (val !== undefined && val !== null && val !== '---' && val !== '#N/A' && val !== '#N/D' && val !== '') {
+        displayVal = String(val);
+      }
+
+      const upperVal = displayVal.toUpperCase();
+      if (upperVal === 'APTO' || upperVal === 'APTO/A') {
+        doc.setTextColor(5, 150, 105);
+      } else if (upperVal === 'NO APTO' || upperVal === 'NO APTO/A') {
+        doc.setTextColor(220, 38, 38);
+      }
+
+      doc.text(displayVal, x, yPos + 4.5);
+    };
+
+    // 8. Phase 1 Details Card
+    if (hasFase1Data) {
+      drawCard('FASE 1: CONOCIMIENTOS, APTITUDES Y PERSONALIDAD', candidate['TOTAL FASE 1'] ? `Nota F1: ${candidate['TOTAL FASE 1']}` : '', y, 32);
+      
+      // Row 1
+      drawGridValue(20, y + 13, 'Conocimientos Grales.', candidate['CONOCIMIENTOS GENERALES']);
+      drawGridValue(65, y + 13, 'Idioma Inglés', candidate['CONOCIMIENTOS IDIOMA INGLÉS']);
+      drawGridValue(110, y + 13, 'Test de Aptitudes', candidate['APTITUDES']);
+      drawGridValue(155, y + 13, 'Test de Personalidad', candidate['PERSONALIDAD']);
+
+      // Row 2
+      drawGridValue(20, y + 23, 'Día de Examen', candidate['DIA EXAMEN FASE 1']);
+      drawGridValue(65, y + 23, 'Aula / Sala', candidate['AULA/SALA FASE 1']);
+      drawGridValue(110, y + 23, 'Sede F1', candidate['SEDE DE EXAMEN FASE 1']);
+
+      y += 38;
+    }
+
+    // 9. Phase 2 Details Card
+    if (hasFase2Data) {
+      drawCard('FASE 2: PRUEBAS DIGITALES', candidate['TOTAL FASE 2'] ? `Nota F2: ${candidate['TOTAL FASE 2']}` : '', y, 32);
+
+      // Row 1
+      drawGridValue(20, y + 13, 'FEAST + PDEA (Total)', candidate['TOTAL FASE 2']);
+      drawGridValue(65, y + 13, 'Estado Fase 2', candidate['ESTADO DEFINITIVO FASE 2'] || candidate['ESTADO PROVISIONAL FASE 2']);
+      drawGridValue(110, y + 13, 'Fecha Examen', candidate['FECHA EXAMEN FASE 2']);
+      drawGridValue(155, y + 13, 'Hora Citación', candidate['HORA INICIO FASE 2']);
+
+      // Row 2
+      const sedeEdificio = `${candidate['SEDE FASE 2'] || ''}${candidate['EDIFICIO FASE 2'] ? ` - ${candidate['EDIFICIO FASE 2']}` : ''}` || '-';
+      drawGridValue(20, y + 23, 'Sede / Edificio', sedeEdificio);
+      drawGridValue(155, y + 23, 'Aula', candidate['AULA FASE 2']);
+
+      y += 38;
+    }
+
+    // 10. Phase 3 Details Card
+    if (hasFase3Data) {
+      drawCard('FASE 3: INGLÉS, CONDUCTUAL Y CLÍNICA', getF3Score() !== '---' ? `Nota F3: ${getF3Score()}` : '', y, 32);
+
+      // Row 1
+      drawGridValue(20, y + 13, 'Inglés Oral (3A)', candidate['INGLÉS ORAL']);
+      drawGridValue(65, y + 13, 'Conductual (3B)', candidate['PUNTUACIÓN 3 B)']);
+      drawGridValue(110, y + 13, 'Clínica (3C)', candidate['RESULTADO 3 C)']);
+
+      // Row 2
+      drawGridValue(20, y + 23, 'Estado 3A (Inglés)', candidate['ESTADO PROVISIONAL FASE 3A']);
+      drawGridValue(65, y + 23, 'Resultado 3B', candidate['RESULTADO 3 B)']);
+      drawGridValue(110, y + 23, 'Fecha Convocatoria', candidate['FECHA FASE 3']);
+      drawGridValue(155, y + 23, 'Hora Convocatoria', candidate['HORA FASE 3A']);
+
+      y += 38;
+    }
+
+    // 11. Footer
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(148, 163, 184); // slate-400
+    doc.text('Consulta de resultados Enaire 2025 · Ficha del Alumno', 105, 285, { align: 'center' });
+
+    // Save PDF
+    const safeName = candidate['APELLIDOS Y NOMBRE'].trim().replace(/[^a-zA-Z0-9]/g, '_');
+    doc.save(`Ficha_Candidato_${safeName}.pdf`);
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
@@ -184,7 +526,7 @@ export default function CandidateDetail({ candidate, phase, onClose, onNext, onP
         className="relative w-full max-w-2xl bg-white dark:bg-zinc-950 rounded-2xl shadow-2xl border border-slate-200 dark:border-zinc-800 overflow-hidden flex flex-col max-h-[90vh]"
       >
         {/* Header decoration */}
-        <div className="absolute top-0 inset-x-0 h-1.5 bg-gradient-to-r from-blue-500 via-[#0099cc] to-emerald-500" />
+        <div className="absolute top-0 inset-x-0 h-1.5 bg-linear-to-r from-blue-500 via-[#0099cc] to-emerald-500" />
 
         {/* Modal Header */}
         <div className="p-6 pb-4 flex justify-between items-start border-b border-slate-100 dark:border-zinc-900 relative">
@@ -257,6 +599,14 @@ export default function CandidateDetail({ candidate, phase, onClose, onNext, onP
               aria-label="Copiar enlace"
             >
               {copied ? <Check size={18} className="text-emerald-500 font-bold" /> : <Link size={18} />}
+            </button>
+            <button
+              onClick={handleDownloadPDF}
+              className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+              title="Descargar Ficha en PDF (A4)"
+              aria-label="Descargar PDF"
+            >
+              <Download size={18} />
             </button>
             <button
               onClick={onClose}
@@ -335,7 +685,7 @@ export default function CandidateDetail({ candidate, phase, onClose, onNext, onP
               </div>
 
               {/* Connecting line */}
-              <div className="absolute top-4 left-[16.6%] right-[16.6%] h-0.5 bg-slate-200 dark:bg-zinc-800 -z-0" />
+              <div className="absolute top-4 left-[16.6%] right-[16.6%] h-0.5 bg-slate-200 dark:bg-zinc-800 z-0" />
             </div>
           </div>
 

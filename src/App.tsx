@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import Papa from 'papaparse';
-import { Search, Filter, ChevronDown, ChevronUp, MapPin, User, Info, Settings2, Trophy, BarChart3, List, X } from 'lucide-react';
+import { Search, Filter, ChevronDown, ChevronUp, MapPin, User, Info, Settings2, Trophy, BarChart3, List, X, Github } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Statistics from './components/Statistics';
 import Aulas from './components/Aulas';
@@ -590,7 +590,7 @@ export default function App() {
               </div>
 
               {/* Suggested Quick Filters Pills */}
-              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-zinc-100/5 dark:border-zinc-900 flex items-center gap-2 flex-wrap">
+              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-zinc-900 flex items-center gap-2 flex-wrap">
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Filtros rápidos:</span>
                 
                 {/* Madrid pill */}
@@ -756,11 +756,22 @@ export default function App() {
 
       {/* Footer Disclaimer Only */}
       <footer className="py-8 border-t border-slate-200 dark:border-zinc-800 mt-8">
-        <div className="max-w-7xl mx-auto px-4 text-center">
+        <div className="max-w-7xl mx-auto px-4 text-center space-y-3">
           <p className="text-[11px] text-slate-400 dark:text-slate-500 leading-relaxed max-w-2xl mx-auto">
             Esta es una herramienta independiente para la consulta de resultados de la convocatoria de Controladores 2025.
             No tiene vinculación oficial con Enaire. Para información vinculante, consulte siempre los canales oficiales.
           </p>
+          <div className="flex justify-center">
+            <a
+              href="https://github.com/pfaraluce/resultados-enaire"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs text-slate-450 hover:text-[#0099cc] dark:text-slate-500 dark:hover:text-[#0099cc] transition-colors"
+            >
+              <Github size={14} />
+              <span>Ver repositorio en GitHub</span>
+            </a>
+          </div>
         </div>
       </footer>
 
