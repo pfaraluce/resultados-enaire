@@ -77,6 +77,25 @@ export default function App() {
             setPhase(detectedPhase);
             setVisibleColumns(detectedPhase.defaultVisibleColumns);
 
+            if (detectedPhase.id === 'fase3-prov') {
+              rawData.forEach(item => {
+                if (item['F1+F2'] !== undefined) {
+                  const parseScoreVal = (s: string) => {
+                    if (!s || s === '---' || s === '#N/A' || s === '#N/D') return 0;
+                    const num = parseFloat(s.toString().replace(',', '.'));
+                    return isNaN(num) ? 0 : num;
+                  };
+                  const f1f2 = parseScoreVal(item['F1+F2']);
+                  const oral = parseScoreVal(item['INGLÉS ORAL']);
+                  const p3b = parseScoreVal(item['PUNTUACIÓN 3 B)']);
+                  if (f1f2 > 0) {
+                    const calculated = f1f2 + oral + p3b;
+                    item['F1+F2+F3'] = calculated.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                  }
+                }
+              });
+            }
+
             // Calculate ranking based on the phase's score column
             const scoreCol = detectedPhase.scoreColumn;
 

@@ -249,7 +249,11 @@ function AulaCard({ aulaLabel, candidates, phase, searchWords, open, onToggle, o
                                     ) : filtered.map(c => (
                                         <tr key={c.IDENTIFICADOR + c['APELLIDOS Y NOMBRE']}
                                             onClick={() => onSelectCandidate?.(c)}
-                                            className="hover:bg-blue-50/30 dark:hover:bg-blue-900/10 cursor-pointer transition-colors">
+                                            className={`hover:bg-blue-50/30 dark:hover:bg-blue-900/10 cursor-pointer transition-colors ${
+                                                c.ranking && c.ranking <= 149
+                                                    ? 'bg-emerald-50/45 dark:bg-emerald-950/20 border-l-2 border-emerald-500'
+                                                    : ''
+                                            }`}>
                                             {scoreCol && (
                                                 <td className="px-3 py-1.5 text-[11px] font-bold text-slate-400 tabular-nums">
                                                     {c.ranking ? `${c.ranking}.` : '-'}
@@ -338,7 +342,11 @@ function Fase3DayCard({ date, candidates, searchWords, open, onToggle, onSelectC
                                     ) : filtered.map(c => (
                                         <tr key={c.IDENTIFICADOR + c['APELLIDOS Y NOMBRE']}
                                             onClick={() => onSelectCandidate?.(c)}
-                                            className="hover:bg-blue-50/30 dark:hover:bg-blue-900/10 cursor-pointer transition-colors">
+                                            className={`hover:bg-blue-50/30 dark:hover:bg-blue-900/10 cursor-pointer transition-colors ${
+                                                c.ranking && c.ranking <= 149
+                                                    ? 'bg-emerald-50/45 dark:bg-emerald-950/20 border-l-2 border-emerald-500'
+                                                    : ''
+                                            }`}>
                                             <td className="px-3 py-1.5 text-[11px] font-bold text-slate-400 tabular-nums">
                                                 {c.ranking ? `${c.ranking}.` : '-'}
                                             </td>

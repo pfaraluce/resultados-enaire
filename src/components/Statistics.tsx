@@ -299,7 +299,7 @@ export default function Statistics({ data, phase }: StatisticsProps) {
                 </span>
               </div>
               <h3 className="text-3xl font-black text-slate-800 dark:text-slate-100">{stats.aprobadosF2.toLocaleString('es-ES')}</h3>
-              <p className="text-[11px] text-slate-400 mt-1">Superaron la segunda fase (FEAST 1 + FEAST 2)</p>
+              <p className="text-[11px] text-slate-400 mt-1">Superaron la segunda fase (PDEA + FEAST)</p>
             </div>
             <div className="mt-4 pt-4 border-t border-slate-100 dark:border-zinc-800 flex justify-between items-center text-xs font-bold text-slate-500">
               <span>Tasa de Aprobados F2</span>
