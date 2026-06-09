@@ -3,7 +3,7 @@ import { Candidate } from '../App';
 import { PhaseConfig } from '../phaseConfig';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  ComposedChart, Line, Cell
+  ComposedChart, Line, Cell, Sankey
 } from 'recharts';
 import { 
   Users, UserCheck, UserX, Award, MapPin, Calendar, 
@@ -17,6 +17,7 @@ interface StatisticsProps {
 
 export default function Statistics({ data, phase }: StatisticsProps) {
   const [shouldRenderChart, setShouldRenderChart] = useState(false);
+  const [funnelView, setFunnelView] = useState<'cards' | 'sankey'>('cards');
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -134,6 +135,22 @@ export default function Statistics({ data, phase }: StatisticsProps) {
       };
     }).sort((a, b) => a.name.localeCompare(b.name));
 
+    // Phase 3B (Conductual) average pass rate per day
+    const f3Dates = data.map(d => d['FECHA FASE 3']?.trim()).filter(Boolean);
+    const validF3Dates = Array.from(new Set(f3Dates)).filter(d => d !== '---' && d !== '#N/A' && d !== '#N/D');
+
+    let totalAprobados3B = 0;
+    data.forEach(d => {
+      const date = d['FECHA FASE 3']?.trim();
+      const resultado3B = d['RESULTADO 3 B)']?.trim().toUpperCase();
+      if (date && date !== '---' && date !== '#N/A' && date !== '#N/D' && resultado3B === 'APTO/A') {
+        totalAprobados3B++;
+      }
+    });
+
+    const totalDiasF3 = validF3Dates.length;
+    const mediaAprobados3BDia = totalDiasF3 > 0 ? totalAprobados3B / totalDiasF3 : 0;
+
     return {
       convocados,
       presentadosF1,
@@ -146,9 +163,131 @@ export default function Statistics({ data, phase }: StatisticsProps) {
       aptAptos,
       persAptos,
       bySede,
-      byDiaF1
+      byDiaF1,
+      mediaAprobados3BDia,
+      totalDiasF3
     };
   }, [data]);
+
+  const sankeyData = useMemo(() => {
+    const nodes = [
+      { name: 'Convocados' },      // 0
+      { name: 'Presentados F1' },  // 1
+      { name: 'No Presentados' },  // 2
+      { name: 'Aptos Fase 1' },    // 3
+      { name: 'No Aptos Fase 1' }  // 4
+    ];
+
+    const links = [
+      { source: 0, target: 1, value: stats.presentadosF1 },
+      { source: 0, target: 2, value: Math.max(0, stats.convocados - stats.presentadosF1) },
+      { source: 1, target: 3, value: stats.aprobadosF1 },
+      { source: 1, target: 4, value: Math.max(0, stats.presentadosF1 - stats.aprobadosF1) }
+    ];
+
+    const hasF2 = stats.aprobadosF2 > 0 || phase.id === 'fase2' || phase.id === 'fase3a-prov' || phase.id === 'fase3-prov';
+    if (hasF2) {
+      nodes.push({ name: 'Aptos Fase 2' });      // 5
+      nodes.push({ name: 'No Aptos Fase 2' });   // 6
+      links.push({ source: 3, target: 5, value: stats.aprobadosF2 });
+      links.push({ source: 3, target: 6, value: Math.max(0, stats.aprobadosF1 - stats.aprobadosF2) });
+    }
+
+    const isF3Active = phase.id === 'fase3-prov' || phase.id === 'fase3a-prov' || stats.aprobadosF3 > 0;
+    if (isF3Active && hasF2) {
+      const aptosF3Label = phase.id === 'fase3a-prov' ? 'Aptos Fase 3A' : 'Aptos Fase 3';
+      const noAptosF3Label = phase.id === 'fase3a-prov' ? 'No Aptos Fase 3A' : 'No Aptos Fase 3';
+      nodes.push({ name: aptosF3Label });      // 7
+      nodes.push({ name: noAptosF3Label });   // 8
+      
+      const valF3 = phase.id === 'fase3a-prov'
+        ? data.filter(d => d['ESTADO PROVISIONAL FASE 3A']?.trim().toUpperCase() === 'APTO/A').length
+        : stats.aprobadosF3;
+
+      links.push({ source: 5, target: 7, value: valF3 });
+      links.push({ source: 5, target: 8, value: Math.max(0, stats.aprobadosF2 - valF3) });
+    }
+
+    return { nodes, links };
+  }, [data, phase, stats]);
+
+  // Custom Node component for Sankey flow
+  const CustomSankeyNode = ({ x, y, width, height, depth, payload }: any) => {
+    // Position labels on the left ONLY for the rightmost column to prevent clipping on the right edge.
+    // For all other columns, render labels on the right to prevent overlapping with previous stages.
+    const isRightmost = depth === (sankeyData.nodes.length > 7 ? 4 : sankeyData.nodes.length > 5 ? 3 : 2);
+    const textX = isRightmost ? x - 8 : x + width + 8;
+    const textAnchor = isRightmost ? 'end' : 'start';
+
+    let fill = '#94a3b8'; // Slate grey for inactive/failure flows
+    if (payload.name.startsWith('Aptos') || payload.name === 'Presentados F1' || payload.name === 'Convocados') {
+      fill = '#0099cc'; // Accent brand blue for passing flows
+    } else if (payload.name.startsWith('No ')) {
+      fill = '#cbd5e1'; // Soft desaturated slate-300
+    }
+
+    return (
+      <g>
+        <rect
+          x={x}
+          y={y}
+          width={width}
+          height={Math.max(4, height)}
+          fill={fill}
+          fillOpacity={0.85}
+          rx={3}
+          ry={3}
+          className="transition-all duration-300 hover:fill-opacity-100"
+        />
+        <text
+          x={textX}
+          y={y + height / 2 + 4}
+          textAnchor={textAnchor}
+          fontSize="10"
+          fontWeight="bold"
+          fill="#475569"
+          className="dark:fill-zinc-300"
+        >
+          {payload.name} ({payload.value.toLocaleString('es-ES')})
+        </text>
+      </g>
+    );
+  };
+
+  // Custom Link component for Sankey flow
+  const CustomSankeyLink = ({
+    sourceX,
+    sourceY,
+    targetX,
+    targetY,
+    sourceControlX,
+    targetControlX,
+    linkWidth,
+    payload
+  }: any) => {
+    if (!linkWidth) return null;
+
+    const targetName = payload.target.name;
+    const isSuccess = targetName.startsWith('Aptos') || targetName.startsWith('Presentados');
+    const strokeColor = isSuccess ? '#0099cc' : '#94a3b8';
+    const strokeOpacity = isSuccess ? 0.35 : 0.12;
+
+    const path = `
+      M${sourceX},${sourceY}
+      C${sourceControlX},${sourceY} ${targetControlX},${targetY} ${targetX},${targetY}
+    `;
+
+    return (
+      <path
+        d={path}
+        stroke={strokeColor}
+        strokeWidth={Math.max(1.5, linkWidth)}
+        fill="none"
+        strokeOpacity={strokeOpacity}
+        className="transition-all duration-350 hover:stroke-opacity-70"
+      />
+    );
+  };
 
   const subtests = [
     { 
@@ -156,8 +295,8 @@ export default function Statistics({ data, phase }: StatisticsProps) {
       aptos: stats.cgAptos, 
       presentados: stats.presentadosF1,
       rate: stats.presentadosF1 > 0 ? ((stats.cgAptos / stats.presentadosF1) * 100).toFixed(1) : '0',
-      color: 'from-blue-500 to-sky-400',
-      lightColor: 'bg-blue-50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-900/30',
+      color: 'from-slate-400 to-slate-500',
+      lightColor: 'bg-slate-50/40 dark:bg-zinc-900/10 border-slate-200/50 dark:border-zinc-800/50',
       icon: BookOpen,
       desc: 'Evaluación de temario técnico aeronáutico y cartografía'
     },
@@ -166,8 +305,8 @@ export default function Statistics({ data, phase }: StatisticsProps) {
       aptos: stats.ingAptos, 
       presentados: stats.presentadosF1,
       rate: stats.presentadosF1 > 0 ? ((stats.ingAptos / stats.presentadosF1) * 100).toFixed(1) : '0',
-      color: 'from-indigo-500 to-violet-400',
-      lightColor: 'bg-indigo-50 dark:bg-indigo-900/10 border-indigo-100 dark:border-indigo-900/30',
+      color: 'from-[#0099cc]/75 to-sky-500/70',
+      lightColor: 'bg-sky-50/20 dark:bg-sky-950/10 border-[#0099cc]/20 dark:border-sky-900/30',
       icon: Languages,
       desc: 'Prueba eliminatoria escrita de gramática y comprensión'
     },
@@ -176,8 +315,8 @@ export default function Statistics({ data, phase }: StatisticsProps) {
       aptos: stats.aptAptos, 
       presentados: stats.presentadosF1,
       rate: stats.presentadosF1 > 0 ? ((stats.aptAptos / stats.presentadosF1) * 100).toFixed(1) : '0',
-      color: 'from-purple-500 to-fuchsia-400',
-      lightColor: 'bg-purple-50 dark:bg-purple-900/10 border-purple-100 dark:border-purple-900/30',
+      color: 'from-slate-500 to-slate-600',
+      lightColor: 'bg-slate-50/40 dark:bg-zinc-900/10 border-slate-200/50 dark:border-zinc-800/50',
       icon: Brain,
       desc: 'Capacidad espacial, razonamiento lógico y orientación'
     },
@@ -186,8 +325,8 @@ export default function Statistics({ data, phase }: StatisticsProps) {
       aptos: stats.persAptos, 
       presentados: stats.presentadosF1,
       rate: stats.presentadosF1 > 0 ? ((stats.persAptos / stats.presentadosF1) * 100).toFixed(1) : '0',
-      color: 'from-emerald-500 to-teal-400',
-      lightColor: 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-900/30',
+      color: 'from-slate-600 to-slate-700',
+      lightColor: 'bg-slate-50/40 dark:bg-zinc-900/10 border-slate-200/50 dark:border-zinc-800/50',
       icon: HeartHandshake,
       desc: 'Evaluación conductual y adecuación al perfil ATC'
     }
@@ -224,23 +363,99 @@ export default function Statistics({ data, phase }: StatisticsProps) {
       
       {/* 1. FUNNEL DE RECLUTAMIENTO */}
       <section className="bg-white dark:bg-zinc-950 rounded-2xl p-6 border border-slate-200 dark:border-zinc-800 shadow-sm">
-        <h2 className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
-          <TrendingUp size={16} className="text-[#0099cc]" />
-          Funnel de Selección Acumulado
-        </h2>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <h2 className="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+            <TrendingUp size={16} className="text-[#0099cc]" />
+            Funnel de Selección Acumulado
+          </h2>
+          <div className="flex bg-slate-100 dark:bg-zinc-850 p-0.5 rounded-lg border border-slate-200/50 dark:border-zinc-800/80 self-start sm:self-auto">
+            <button
+              onClick={() => setFunnelView('cards')}
+              className={`px-3 py-1 text-xs font-bold rounded-md transition-all duration-200 ${
+                funnelView === 'cards'
+                  ? 'bg-white dark:bg-zinc-800 text-slate-800 dark:text-slate-100 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-350'
+              }`}
+            >
+              Vista Resumen
+            </button>
+            <button
+              onClick={() => setFunnelView('sankey')}
+              className={`px-3 py-1 text-xs font-bold rounded-md transition-all duration-200 ${
+                funnelView === 'sankey'
+                  ? 'bg-white dark:bg-zinc-800 text-slate-800 dark:text-slate-100 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-350'
+              }`}
+            >
+              Flujo del Proceso (Sankey)
+            </button>
+          </div>
+        </div>
 
-        <div className={`grid grid-cols-1 ${
-          phase.id === 'fase3-prov' || phase.id === 'fase3a-prov' || stats.aprobadosF3 > 0
-            ? 'sm:grid-cols-2 lg:grid-cols-5'
-            : 'sm:grid-cols-2 lg:grid-cols-4'
-        } gap-4 relative`}>
+        {funnelView === 'sankey' ? (
+          <div className="h-[380px] w-full mt-4 bg-slate-50/20 dark:bg-zinc-900/10 border border-slate-100 dark:border-zinc-800/50 rounded-2xl p-6 flex items-center justify-center min-w-0">
+            {shouldRenderChart ? (
+              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
+                <Sankey
+                  data={sankeyData}
+                  node={<CustomSankeyNode />}
+                  link={<CustomSankeyLink />}
+                  nodePadding={24}
+                  nodeWidth={12}
+                  margin={{ top: 15, right: 130, left: 15, bottom: 15 }}
+                >
+                  <Tooltip
+                    content={({ active, payload }: any) => {
+                      if (active && payload && payload.length) {
+                        const d = payload[0].payload;
+                        if (d.source && d.target) {
+                          return (
+                            <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-850 p-3 rounded-xl shadow-xl text-xs">
+                              <p className="font-bold text-slate-700 dark:text-slate-300">
+                                {d.source.name} → {d.target.name}
+                              </p>
+                              <p className="text-[#0099cc] font-black mt-1 text-sm">
+                                {d.value.toLocaleString('es-ES')} candidatos
+                              </p>
+                            </div>
+                          );
+                        }
+                        return (
+                          <div className="bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-850 p-3 rounded-xl shadow-xl text-xs">
+                            <p className="font-bold text-slate-700 dark:text-slate-300">{d.name}</p>
+                            <p className="text-[#0099cc] font-black mt-1 text-sm">
+                              {d.value.toLocaleString('es-ES')} candidatos
+                            </p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                </Sankey>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full w-full flex items-center justify-center">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="w-8 h-8 border-4 border-[#0099cc] border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-xs text-slate-400 font-medium">Generando diagrama de flujo...</span>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className={`grid grid-cols-1 ${
+            phase.id === 'fase3-prov' || phase.id === 'fase3a-prov' || stats.aprobadosF3 > 0
+              ? 'sm:grid-cols-2 lg:grid-cols-5'
+              : 'sm:grid-cols-2 lg:grid-cols-4'
+          } gap-4 relative`}>
           
           {/* Step 1: Convocados */}
           <div className="bg-slate-50 dark:bg-zinc-900/30 border border-slate-100 dark:border-zinc-800 rounded-xl p-5 relative overflow-hidden flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">1. Convocados</span>
-                <span className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">
+                <span className="p-1.5 rounded-lg bg-slate-100 dark:bg-zinc-800 text-slate-500">
                   <Users size={16} />
                 </span>
               </div>
@@ -258,7 +473,7 @@ export default function Statistics({ data, phase }: StatisticsProps) {
             <div>
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">2. Presentados F1</span>
-                <span className="p-1.5 rounded-lg bg-indigo-100 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400">
+                <span className="p-1.5 rounded-lg bg-slate-100 dark:bg-zinc-800 text-slate-500">
                   <UserCheck size={16} />
                 </span>
               </div>
@@ -267,7 +482,7 @@ export default function Statistics({ data, phase }: StatisticsProps) {
             </div>
             <div className="mt-4 pt-4 border-t border-slate-100 dark:border-zinc-800 flex justify-between items-center text-xs font-bold text-slate-500">
               <span>Asistencia</span>
-              <span className="text-indigo-500">{((stats.presentadosF1 / stats.convocados) * 100).toFixed(1)}%</span>
+              <span className="text-slate-500 dark:text-slate-400">{((stats.presentadosF1 / stats.convocados) * 100).toFixed(1)}%</span>
             </div>
           </div>
 
@@ -276,7 +491,7 @@ export default function Statistics({ data, phase }: StatisticsProps) {
             <div>
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">3. Aptos Fase 1</span>
-                <span className="p-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400">
+                <span className="p-1.5 rounded-lg bg-slate-100 dark:bg-zinc-800 text-slate-500">
                   <Award size={16} />
                 </span>
               </div>
@@ -285,7 +500,7 @@ export default function Statistics({ data, phase }: StatisticsProps) {
             </div>
             <div className="mt-4 pt-4 border-t border-slate-100 dark:border-zinc-800 flex justify-between items-center text-xs font-bold text-slate-500">
               <span>Tasa de Aprobados</span>
-              <span className="text-emerald-500">{((stats.aprobadosF1 / stats.presentadosF1) * 100).toFixed(1)}%</span>
+              <span className="text-slate-500 dark:text-slate-400">{((stats.aprobadosF1 / stats.presentadosF1) * 100).toFixed(1)}%</span>
             </div>
           </div>
 
@@ -294,7 +509,7 @@ export default function Statistics({ data, phase }: StatisticsProps) {
             <div>
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">4. Aptos Fase 2</span>
-                <span className="p-1.5 rounded-lg bg-teal-100 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400">
+                <span className="p-1.5 rounded-lg bg-slate-100 dark:bg-zinc-800 text-slate-500">
                   <Award size={16} />
                 </span>
               </div>
@@ -303,7 +518,7 @@ export default function Statistics({ data, phase }: StatisticsProps) {
             </div>
             <div className="mt-4 pt-4 border-t border-slate-100 dark:border-zinc-800 flex justify-between items-center text-xs font-bold text-slate-500">
               <span>Tasa de Aprobados F2</span>
-              <span className="text-teal-500">{stats.aprobadosF1 > 0 ? ((stats.aprobadosF2 / stats.aprobadosF1) * 100).toFixed(1) : '0'}%</span>
+              <span className="text-slate-500 dark:text-slate-400">{stats.aprobadosF1 > 0 ? ((stats.aprobadosF2 / stats.aprobadosF1) * 100).toFixed(1) : '0'}%</span>
             </div>
           </div>
 
@@ -315,7 +530,7 @@ export default function Statistics({ data, phase }: StatisticsProps) {
                   <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
                     {phase.id === 'fase3a-prov' ? '5. Aptos Fase 3A' : '5. Aptos Fase 3'}
                   </span>
-                  <span className="p-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400">
+                  <span className="p-1.5 rounded-lg bg-slate-100 dark:bg-zinc-800 text-slate-500">
                     <Award size={16} />
                   </span>
                 </div>
@@ -332,7 +547,7 @@ export default function Statistics({ data, phase }: StatisticsProps) {
               </div>
               <div className="mt-4 pt-4 border-t border-slate-100 dark:border-zinc-800 flex justify-between items-center text-xs font-bold text-slate-500">
                 <span>Tasa de Aprobados F3</span>
-                <span className="text-emerald-500">
+                <span className="text-slate-500 dark:text-slate-400">
                   {stats.aprobadosF2 > 0
                     ? `${(( (phase.id === 'fase3a-prov' ? data.filter(d => d['ESTADO PROVISIONAL FASE 3A']?.trim().toUpperCase() === 'APTO/A').length : stats.aprobadosF3) / stats.aprobadosF2) * 100).toFixed(1)}%`
                     : '0%'}
@@ -342,6 +557,34 @@ export default function Statistics({ data, phase }: StatisticsProps) {
           )}
 
         </div>
+      )}
+
+        {/* Media Aprobados por Día en Conductual (Fuera del funnel) */}
+        {phase.id === 'fase3-prov' && (
+          <div className="mt-5 p-4 bg-slate-50/50 dark:bg-zinc-900/20 border border-slate-150 dark:border-zinc-800/80 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-xs animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-slate-100 dark:bg-zinc-800 rounded-lg text-[#0099cc]">
+                <Calendar size={18} />
+              </div>
+              <div>
+                <span className="font-bold text-slate-700 dark:text-slate-200 block text-sm">Media de Aprobados por Día en Conductual (3B)</span>
+                <span className="text-[11px] text-slate-400">Promedio de candidatos aptos por jornada de evaluación en la prueba conductual.</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 self-stretch sm:self-auto justify-end">
+              <div className="bg-slate-105 dark:bg-zinc-850 px-3 py-2 rounded-lg border border-slate-200/50 dark:border-zinc-750 flex flex-col items-center min-w-[80px]">
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Jornadas</span>
+                <span className="font-black text-slate-800 dark:text-slate-150 text-sm mt-0.5">{stats.totalDiasF3}</span>
+              </div>
+              <div className="bg-[#0099cc]/5 dark:bg-[#0099cc]/5 px-3 py-2 rounded-lg border border-[#0099cc]/15 flex flex-col items-center min-w-[120px]">
+                <span className="text-[10px] text-[#0099cc] font-bold uppercase tracking-wider">Media de Aptos</span>
+                <span className="font-black text-[#0099cc] text-base mt-0.5">
+                  {stats.mediaAprobados3BDia.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* 2. DIFICULTAD FASE 1 - RENDER DE SUBPRUEBAS */}
@@ -408,12 +651,12 @@ export default function Statistics({ data, phase }: StatisticsProps) {
                 <Tooltip cursor={{ fill: 'rgba(0,0,0,0.02)' }} content={<CustomTooltip />} />
                 <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '11px', fontWeight: 'medium' }} />
                 
-                <Bar name="Aptos C. Grales" dataKey="% C. Grales" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={12} />
-                <Bar name="Aptos Inglés" dataKey="% Inglés" fill="#6366f1" radius={[4, 4, 0, 0]} barSize={12} />
-                <Bar name="Aptos Aptitudes" dataKey="% Aptitudes" fill="#a855f7" radius={[4, 4, 0, 0]} barSize={12} />
-                <Bar name="Aptos Personalidad" dataKey="% Personalidad" fill="#10b981" radius={[4, 4, 0, 0]} barSize={12} />
+                <Bar name="Aptos C. Grales" dataKey="% C. Grales" fill="#cbd5e1" radius={[4, 4, 0, 0]} barSize={12} />
+                <Bar name="Aptos Inglés" dataKey="% Inglés" fill="#94a3b8" radius={[4, 4, 0, 0]} barSize={12} />
+                <Bar name="Aptos Aptitudes" dataKey="% Aptitudes" fill="#64748b" radius={[4, 4, 0, 0]} barSize={12} />
+                <Bar name="Aptos Personalidad" dataKey="% Personalidad" fill="#475569" radius={[4, 4, 0, 0]} barSize={12} />
                 
-                <Line name="Tasa Aprobados F1 Global" type="monotone" dataKey="% Aprobados F1" stroke="#f59e0b" strokeWidth={3.5} dot={{ r: 5, fill: '#f59e0b', strokeWidth: 2, stroke: '#fff' }} />
+                <Line name="Tasa Aprobados F1 Global" type="monotone" dataKey="% Aprobados F1" stroke="#0099cc" strokeWidth={3.5} dot={{ r: 5, fill: '#0099cc', strokeWidth: 2, stroke: '#fff' }} />
               </ComposedChart>
             </ResponsiveContainer>
           ) : (
@@ -454,59 +697,59 @@ export default function Statistics({ data, phase }: StatisticsProps) {
                   </div>
                   <div>
                     <span className="text-[10px] font-bold text-slate-400 uppercase block">Presentados</span>
-                    <span className="text-base font-black text-indigo-500">{sede.Presentados}</span>
+                    <span className="text-base font-black text-slate-600 dark:text-slate-300">{sede.Presentados}</span>
                   </div>
                   <div>
                     <span className="text-[10px] font-bold text-slate-400 uppercase block">Aprobados F1</span>
-                    <span className="text-base font-black text-[#0099cc]">{sede.AprobadosF1}</span>
+                    <span className="text-base font-black text-slate-700 dark:text-slate-200">{sede.AprobadosF1}</span>
                   </div>
                   {(phase.id === 'fase3-prov' || phase.id === 'fase3a-prov' || stats.aprobadosF3 > 0) && (
                     <div>
                       <span className="text-[10px] font-bold text-slate-400 uppercase block">Aprobados F3</span>
-                      <span className="text-base font-black text-emerald-500">{sede.AprobadosF3}</span>
+                      <span className="text-base font-black text-[#0099cc]">{sede.AprobadosF3}</span>
                     </div>
                   )}
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-2 mt-4">
                   <div>
-                    <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase">
+                    <div className="flex justify-between items-center text-[10px] font-bold text-slate-450 uppercase">
                       <span>Tasa Asistencia</span>
-                      <span className="text-indigo-500">{sede['% Asistencia']}%</span>
+                      <span className="text-slate-500">{sede['% Asistencia']}%</span>
                     </div>
                     <div className="w-full bg-slate-200 dark:bg-zinc-850 h-2 rounded-full overflow-hidden mt-1">
-                      <div className="bg-indigo-500 h-full rounded-full" style={{ width: `${sede['% Asistencia']}%` }} />
+                      <div className="bg-slate-400 h-full rounded-full" style={{ width: `${sede['% Asistencia']}%` }} />
                     </div>
                   </div>
 
                   <div>
-                    <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase">
+                    <div className="flex justify-between items-center text-[10px] font-bold text-slate-450 uppercase">
                       <span>Tasa Aprobados F1</span>
-                      <span className="text-emerald-500">{sede['% Aprobados F1']}%</span>
+                      <span className="text-slate-500">{sede['% Aprobados F1']}%</span>
                     </div>
                     <div className="w-full bg-slate-200 dark:bg-zinc-850 h-2 rounded-full overflow-hidden mt-1">
-                      <div className="bg-[#0099cc] h-full rounded-full" style={{ width: `${sede['% Aprobados F1']}%` }} />
+                      <div className="bg-slate-500 h-full rounded-full" style={{ width: `${sede['% Aprobados F1']}%` }} />
                     </div>
                   </div>
 
                   <div>
-                    <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase">
+                    <div className="flex justify-between items-center text-[10px] font-bold text-slate-450 uppercase">
                       <span>Aptos F2 (sobre F1)</span>
-                      <span className="text-teal-500">{sede['% Aprobados F2']}%</span>
+                      <span className="text-slate-500">{sede['% Aprobados F2']}%</span>
                     </div>
                     <div className="w-full bg-slate-200 dark:bg-zinc-850 h-2 rounded-full overflow-hidden mt-1">
-                      <div className="bg-teal-500 h-full rounded-full" style={{ width: `${sede['% Aprobados F2']}%` }} />
+                      <div className="bg-slate-600 h-full rounded-full" style={{ width: `${sede['% Aprobados F2']}%` }} />
                     </div>
                   </div>
 
                   {(phase.id === 'fase3-prov' || phase.id === 'fase3a-prov' || stats.aprobadosF3 > 0) && (
                     <div>
-                      <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase">
+                      <div className="flex justify-between items-center text-[10px] font-bold text-slate-450 uppercase">
                         <span>Aptos F3 (sobre F2)</span>
-                        <span className="text-emerald-500">{sede['% Aprobados F3']}%</span>
+                        <span className="text-[#0099cc]">{sede['% Aprobados F3']}%</span>
                       </div>
                       <div className="w-full bg-slate-200 dark:bg-zinc-850 h-2 rounded-full overflow-hidden mt-1">
-                        <div className="bg-emerald-500 h-full rounded-full" style={{ width: `${sede['% Aprobados F3']}%` }} />
+                        <div className="bg-[#0099cc] h-full rounded-full" style={{ width: `${sede['% Aprobados F3']}%` }} />
                       </div>
                     </div>
                   )}
