@@ -80,6 +80,54 @@ const AULA_PHASES: AulaPhase[] = [
 function isEmpty(val: string | undefined, empties: string[]) { return !val || empties.includes(val.trim()); }
 function normalize(str: string) { return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
 
+function getFase3Status(c: Candidate) {
+    const status3A = c['ESTADO PROVISIONAL FASE 3A']?.trim();
+    const status3B = c['RESULTADO 3 B)']?.trim();
+    const status3C = c['RESULTADO 3 C)']?.trim();
+
+    const u3A = status3A?.toUpperCase() || '';
+    const u3B = status3B?.toUpperCase() || '';
+    const u3C = status3C?.toUpperCase() || '';
+
+    // Check for explicit exclusions, renuncias, etc. first
+    if (u3A.includes('EXCLUI') || u3A.includes('RENUNCIA')) return status3A;
+    if (u3B.includes('EXCLUI') || u3B.includes('RENUNCIA')) return status3B;
+    if (u3C.includes('EXCLUI') || u3C.includes('RENUNCIA')) return status3C;
+
+    if (u3A === 'NO APTO/A' || u3B === 'NO APTO/A' || u3C === 'NO APTO/A' ||
+        u3A === 'NO APTO' || u3B === 'NO APTO' || u3C === 'NO APTO') {
+        return 'NO APTO/A';
+    }
+    if ((u3A === 'APTO/A' || u3A === 'APTO') && 
+        (u3B === 'APTO/A' || u3B === 'APTO') && 
+        (u3C === 'APTO/A' || u3C === 'APTO')) {
+        return 'APTO/A';
+    }
+    
+    // If one is APTO/A but another is pending/empty, return Pendiente
+    if (u3A === 'APTO/A' && (u3B === '---' || !u3B || u3C === '---' || !u3C)) {
+        return 'Pendiente';
+    }
+
+    return status3A || 'Pendiente';
+}
+
+function getFase3Score(c: Candidate) {
+    const parseScoreVal = (val: any) => {
+        if (!val || val === '---' || val === '#N/A' || val === '#N/D') return 0;
+        const parsed = parseFloat(val.toString().replace(',', '.'));
+        return isNaN(parsed) ? 0 : parsed;
+    };
+
+    if (c['PUNTUACIÓN 3 B)'] !== undefined && c['PUNTUACIÓN 3 B)'] !== '---') {
+        const score3A = parseScoreVal(c['INGLÉS ORAL']);
+        const score3B = parseScoreVal(c['PUNTUACIÓN 3 B)']);
+        if (score3A === 0 && score3B === 0) return '-';
+        return (score3A + score3B).toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    return c['INGLÉS ORAL'] && c['INGLÉS ORAL'] !== '---' ? c['INGLÉS ORAL'] : '-';
+}
+
 const TRANSPORT_ICON: Record<Transport['icon'], React.ReactNode> = {
     bus: <Bus size={13} className="text-slate-400 shrink-0 mt-0.5" />,
     train: <Train size={13} className="text-slate-400 shrink-0 mt-0.5" />,
@@ -333,32 +381,44 @@ function Fase3DayCard({ date, candidates, searchWords, open, onToggle, onSelectC
                                     <tr className="bg-white dark:bg-zinc-950 border-b border-slate-100 dark:border-zinc-800">
                                         <th className="w-12 px-3 py-2 text-[9px] font-bold text-slate-400 uppercase tracking-wider">Pos</th>
                                         <th className="px-3 py-2 text-[9px] font-bold text-slate-400 uppercase tracking-wider">Nombre</th>
-                                        <th className="w-24 px-3 py-2 text-[9px] font-bold text-slate-400 uppercase tracking-wider">Hora 3A</th>
+                                        <th className="w-32 px-3 py-2 text-[9px] font-bold text-slate-400 uppercase tracking-wider">Estado</th>
+                                        <th className="w-20 px-3 py-2 text-[9px] font-bold text-slate-400 uppercase tracking-wider">Total F3</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50 dark:divide-zinc-900">
                                     {filtered.length === 0 ? (
-                                        <tr><td colSpan={3} className="px-3 py-4 text-center text-xs text-slate-400">Sin resultados</td></tr>
-                                    ) : filtered.map(c => (
-                                        <tr key={c.IDENTIFICADOR + c['APELLIDOS Y NOMBRE']}
-                                            onClick={() => onSelectCandidate?.(c)}
-                                            className={`hover:bg-blue-50/30 dark:hover:bg-blue-900/10 cursor-pointer transition-colors ${
-                                                c.ranking && c.ranking <= 149
-                                                    ? 'bg-emerald-50/45 dark:bg-emerald-950/20 border-l-2 border-emerald-500'
-                                                    : ''
-                                            }`}>
-                                            <td className="px-3 py-1.5 text-[11px] font-bold text-slate-400 tabular-nums">
-                                                {c.ranking ? `${c.ranking}.` : '-'}
-                                            </td>
-                                            <td className="px-3 py-1.5 text-[11px] font-medium text-slate-800 dark:text-slate-200 truncate max-w-xs">
-                                                {c['APELLIDOS Y NOMBRE'] || '-'}
-                                            </td>
-                                            <td className="px-3 py-1.5 text-[11px] font-bold text-violet-600 dark:text-violet-300 tabular-nums">
-                                                {c['HORA FASE 3A'] && c['HORA FASE 3A'] !== '---' && c['HORA FASE 3A'] !== '#N/D' && c['HORA FASE 3A'] !== '#N/A'
-                                                    ? c['HORA FASE 3A'] : '-'}
-                                            </td>
-                                        </tr>
-                                    ))}
+                                        <tr><td colSpan={4} className="px-3 py-4 text-center text-xs text-slate-400">Sin resultados</td></tr>
+                                    ) : filtered.map(c => {
+                                        const status = getFase3Status(c);
+                                        return (
+                                            <tr key={c.IDENTIFICADOR + c['APELLIDOS Y NOMBRE']}
+                                                onClick={() => onSelectCandidate?.(c)}
+                                                className={`hover:bg-blue-50/30 dark:hover:bg-blue-900/10 cursor-pointer transition-colors ${
+                                                    c.ranking && c.ranking <= 149
+                                                        ? 'bg-emerald-50/45 dark:bg-emerald-950/20 border-l-2 border-emerald-500'
+                                                        : ''
+                                                }`}>
+                                                <td className="px-3 py-1.5 text-[11px] font-bold text-slate-400 tabular-nums">
+                                                    {c.ranking ? `${c.ranking}.` : '-'}
+                                                </td>
+                                                <td className="px-3 py-1.5 text-[11px] font-medium text-slate-800 dark:text-slate-200 truncate max-w-xs">
+                                                    {c['APELLIDOS Y NOMBRE'] || '-'}
+                                                </td>
+                                                <td className="px-3 py-1.5">
+                                                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide ${
+                                                        status === 'APTO/A' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400'
+                                                        : status === 'NO APTO/A' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                                                        : 'bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-slate-400'
+                                                    }`}>
+                                                        {status}
+                                                    </span>
+                                                </td>
+                                                <td className="px-3 py-1.5 text-[11px] font-bold text-[#0099cc] tabular-nums">
+                                                    {getFase3Score(c)}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>
@@ -550,6 +610,38 @@ export default function Aulas({ data, phase, onSelectCandidate }: AulasProps) {
     const [selectedPhaseId, setSelectedPhaseId] = useState<AulaPhaseId>(() => availablePhases[0]?.id ?? 'fase2');
     const selectedPhase = AULA_PHASES.find(p => p.id === selectedPhaseId) ?? AULA_PHASES[1];
 
+    const subTabPhaseConfig = useMemo<PhaseConfig>(() => {
+        const keys = data.length > 0 ? Object.keys(data[0]) : [];
+        if (selectedPhaseId === 'fase1') {
+            const statusColumn = keys.find(k => k === 'ESTADO DEFINITIVO FASE 1') || keys.find(k => k === 'ESTADO PROVISIONAL FASE 1') || keys.find(k => k === 'ESTADO PROVISIONAL') || '';
+            const scoreColumn = keys.find(k => k === 'TOTAL FASE 1') || '';
+            return {
+                id: 'fase1',
+                label: 'Fase 1',
+                badgeText: 'Fase 1',
+                scoreColumn,
+                statusColumn,
+                columns: [],
+                defaultVisibleColumns: [],
+                sortableColumns: []
+            };
+        } else if (selectedPhaseId === 'fase2') {
+            const statusColumn = keys.find(k => k === 'ESTADO DEFINITIVO FASE 2') || keys.find(k => k === 'ESTADO PROVISIONAL FASE 2') || '';
+            const scoreColumn = keys.find(k => k === 'F1+F2') || keys.find(k => k === 'TOTAL FASE 2') || '';
+            return {
+                id: 'fase2',
+                label: 'Fase 2',
+                badgeText: 'Fase 2',
+                scoreColumn,
+                statusColumn,
+                columns: [],
+                defaultVisibleColumns: [],
+                sortableColumns: []
+            };
+        }
+        return phase;
+    }, [data, selectedPhaseId, phase]);
+
     const phaseData = useMemo(() => {
         if (selectedPhaseId === 'fase3') return [];
         return data.filter(c => selectedPhase.aulaCol ? !isEmpty(c[selectedPhase.aulaCol!], selectedPhase.emptyVal) : false);
@@ -680,7 +772,7 @@ export default function Aulas({ data, phase, onSelectCandidate }: AulasProps) {
     const renderAulaCard = (outer: string, edificio: string, aula: string, cands: Candidate[]) => {
         const key = `${outer}::${edificio}::${aula}`;
         return (
-            <AulaCard key={key} aulaLabel={aula} candidates={cands} phase={phase}
+            <AulaCard key={key} aulaLabel={aula} candidates={cands} phase={subTabPhaseConfig}
                 searchWords={searchWords} open={openAulas.has(key)} onToggle={() => toggleAula(key)}
                 onSelectCandidate={onSelectCandidate} />
         );
@@ -703,18 +795,7 @@ export default function Aulas({ data, phase, onSelectCandidate }: AulasProps) {
                         </button>
                     )}
                 </div>
-                <div className="flex items-center gap-3 flex-wrap">
-                    {availablePhases.length > 1 && (
-                        <div className="flex bg-slate-100 dark:bg-zinc-900 p-0.5 rounded-lg">
-                            {availablePhases.map(ap => (
-                                <button key={ap.id} onClick={() => { setSelectedPhaseId(ap.id); setSelectedDate(''); }}
-                                    className={`px-3 py-1.5 rounded-md text-xs font-bold transition-colors ${selectedPhaseId === ap.id ? 'bg-white dark:bg-zinc-800 text-[#0099cc] shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
-                                    {ap.label}
-                                </button>
-                            ))}
-                        </div>
-                    )}
-
+                <div className="flex items-center gap-3 flex-wrap sm:justify-end flex-1 w-full sm:w-auto">
                     {/* Date selector — only for fase1/fase2 */}
                     {selectedPhaseId !== 'fase3' && (
                         dates.length > 1 ? (
@@ -735,6 +816,17 @@ export default function Aulas({ data, phase, onSelectCandidate }: AulasProps) {
                         ) : (
                             <span className={`text-xs font-bold px-3 py-1.5 rounded-lg border transition-colors ${searchWords.length > 0 ? 'bg-slate-50 dark:bg-zinc-900 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-zinc-800 opacity-50' : 'text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-zinc-900 border-slate-200 dark:border-zinc-800'}`}>{activeDate}</span>
                         )
+                    )}
+
+                    {availablePhases.length > 1 && (
+                        <div className="flex bg-slate-100 dark:bg-zinc-900 p-0.5 rounded-lg">
+                            {availablePhases.map(ap => (
+                                <button key={ap.id} onClick={() => { setSelectedPhaseId(ap.id); setSelectedDate(''); }}
+                                    className={`px-3 py-1.5 rounded-md text-xs font-bold transition-colors ${selectedPhaseId === ap.id ? 'bg-white dark:bg-zinc-800 text-[#0099cc] shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}>
+                                    {ap.label}
+                                </button>
+                            ))}
+                        </div>
                     )}
                 </div>
             </div>

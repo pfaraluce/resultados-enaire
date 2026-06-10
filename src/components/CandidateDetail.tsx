@@ -123,16 +123,34 @@ export default function CandidateDetail({ candidate, phase, onClose, onNext, onP
   };
 
   const getFase3Status = () => {
-    const status3A = candidate['ESTADO PROVISIONAL FASE 3A'];
-    const status3B = candidate['RESULTADO 3 B)'];
-    const status3C = candidate['RESULTADO 3 C)'];
+    const status3A = candidate['ESTADO PROVISIONAL FASE 3A']?.trim();
+    const status3B = candidate['RESULTADO 3 B)']?.trim();
+    const status3C = candidate['RESULTADO 3 C)']?.trim();
 
-    if (status3A === 'NO APTO/A' || status3B === 'NO APTO/A' || status3C === 'NO APTO/A') {
+    const u3A = status3A?.toUpperCase() || '';
+    const u3B = status3B?.toUpperCase() || '';
+    const u3C = status3C?.toUpperCase() || '';
+
+    // Check for explicit exclusions, renuncias, etc. first
+    if (u3A.includes('EXCLUI') || u3A.includes('RENUNCIA')) return status3A;
+    if (u3B.includes('EXCLUI') || u3B.includes('RENUNCIA')) return status3B;
+    if (u3C.includes('EXCLUI') || u3C.includes('RENUNCIA')) return status3C;
+
+    if (u3A === 'NO APTO/A' || u3B === 'NO APTO/A' || u3C === 'NO APTO/A' ||
+        u3A === 'NO APTO' || u3B === 'NO APTO' || u3C === 'NO APTO') {
       return 'NO APTO/A';
     }
-    if (status3A === 'APTO/A' && status3B === 'APTO/A' && status3C === 'APTO/A') {
+    if ((u3A === 'APTO/A' || u3A === 'APTO') && 
+        (u3B === 'APTO/A' || u3B === 'APTO') && 
+        (u3C === 'APTO/A' || u3C === 'APTO')) {
       return 'APTO/A';
     }
+    
+    // If one is APTO/A but another is pending/empty, return Pendiente
+    if (u3A === 'APTO/A' && (u3B === '---' || !u3B || u3C === '---' || !u3C)) {
+      return 'Pendiente';
+    }
+
     return status3A || 'Pendiente';
   };
 
