@@ -1,11 +1,12 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
 import Papa from 'papaparse';
 import { Search, Filter, ChevronDown, ChevronUp, MapPin, User, Info, Settings2, Trophy, BarChart3, List, X, Github } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import Statistics from './components/Statistics';
-import Aulas from './components/Aulas';
 import CandidateDetail from './components/CandidateDetail';
 import { detectPhase, PhaseConfig } from './phaseConfig';
+
+const Statistics = lazy(() => import('./components/Statistics'));
+const Aulas = lazy(() => import('./components/Aulas'));
 
 // Generic candidate record — fields vary per phase CSV.
 export interface Candidate {
@@ -52,6 +53,20 @@ export default function App() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Preload Statistics and Aulas in the background (idle time)
+  useEffect(() => {
+    const preloadComponents = () => {
+      import('./components/Statistics').catch(() => {});
+      import('./components/Aulas').catch(() => {});
+    };
+
+    if ('requestIdleCallback' in window) {
+      (window as any).requestIdleCallback(preloadComponents);
+    } else {
+      setTimeout(preloadComponents, 1500);
+    }
   }, []);
 
   useEffect(() => {
@@ -433,6 +448,9 @@ export default function App() {
                 </button>
                 <button
                   onClick={() => setView('estadisticas')}
+                  onMouseEnter={() => {
+                    import('./components/Statistics').catch(() => {});
+                  }}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${view === 'estadisticas' ? 'bg-white dark:bg-zinc-800 text-[#0099cc] shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
                 >
                   <BarChart3 size={16} />
@@ -440,6 +458,9 @@ export default function App() {
                 </button>
                 <button
                   onClick={() => setView('aulas')}
+                  onMouseEnter={() => {
+                    import('./components/Aulas').catch(() => {});
+                  }}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${view === 'aulas' ? 'bg-white dark:bg-zinc-800 text-[#0099cc] shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
                 >
                   <MapPin size={16} />
@@ -462,9 +483,23 @@ export default function App() {
             <p className="text-red-500 font-medium text-sm">{error}</p>
           </div>
         ) : view === 'estadisticas' ? (
-          <Statistics data={data} phase={phase!} />
+          <Suspense fallback={
+            <div className="bg-white dark:bg-zinc-950 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800 p-20 flex flex-col items-center justify-center gap-4 animate-pulse">
+              <div className="w-10 h-10 border-4 border-[#0099cc] border-t-transparent rounded-full animate-spin"></div>
+              <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">Cargando estadísticas...</p>
+            </div>
+          }>
+            <Statistics data={data} phase={phase!} />
+          </Suspense>
         ) : view === 'aulas' ? (
-          <Aulas data={data} phase={phase!} onSelectCandidate={setSelectedCandidate} />
+          <Suspense fallback={
+            <div className="bg-white dark:bg-zinc-950 rounded-xl shadow-sm border border-slate-200 dark:border-zinc-800 p-20 flex flex-col items-center justify-center gap-4 animate-pulse">
+              <div className="w-10 h-10 border-4 border-[#0099cc] border-t-transparent rounded-full animate-spin"></div>
+              <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">Cargando distribución de aulas...</p>
+            </div>
+          }>
+            <Aulas data={data} phase={phase!} onSelectCandidate={setSelectedCandidate} />
+          </Suspense>
         ) : (
           <>
             {/* Origen de datos (Discreto, sin recuadro) */}
