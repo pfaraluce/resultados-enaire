@@ -123,9 +123,9 @@ export default function CandidateDetail({ candidate, phase, onClose, onNext, onP
   };
 
   const getFase3Status = () => {
-    const status3A = candidate['ESTADO PROVISIONAL FASE 3A']?.trim();
-    const status3B = candidate['RESULTADO 3 B)']?.trim();
-    const status3C = candidate['RESULTADO 3 C)']?.trim();
+    const status3A = (candidate['ESTADO DEFINITIVO FASE 3A'] ?? candidate['ESTADO PROVISIONAL FASE 3A'])?.trim();
+    const status3B = (candidate['RESULTADO DEFINITIVO 3 B)'] ?? candidate['RESULTADO 3 B)'])?.trim();
+    const status3C = (candidate['RESULTADO DEFINITIVO 3 C)'] ?? candidate['RESULTADO 3 C)'])?.trim();
 
     const u3A = status3A?.toUpperCase() || '';
     const u3B = status3B?.toUpperCase() || '';
@@ -157,8 +157,11 @@ export default function CandidateDetail({ candidate, phase, onClose, onNext, onP
   // Determine active overall status
   const getOverallStatus = () => {
     const statusFields = [
+      candidate['RESULTADO DEFINITIVO 3 B)'],
       candidate['RESULTADO 3 B)'],
+      candidate['RESULTADO DEFINITIVO 3 C)'],
       candidate['RESULTADO 3 C)'],
+      candidate['ESTADO DEFINITIVO FASE 3A'],
       candidate['ESTADO PROVISIONAL FASE 3A'],
       candidate['ESTADO DEFINITIVO FASE 2'],
       candidate['ESTADO PROVISIONAL FASE 2'],
@@ -523,8 +526,8 @@ export default function CandidateDetail({ candidate, phase, onClose, onNext, onP
       drawGridValue(110, y + 13, 'Clínica (3C)', candidate['RESULTADO 3 C)']);
 
       // Row 2
-      drawGridValue(20, y + 23, 'Estado 3A (Inglés)', candidate['ESTADO PROVISIONAL FASE 3A']);
-      drawGridValue(65, y + 23, 'Resultado 3B', candidate['RESULTADO 3 B)']);
+      drawGridValue(20, y + 23, 'Estado 3A (Inglés)', candidate['ESTADO DEFINITIVO FASE 3A'] ?? candidate['ESTADO PROVISIONAL FASE 3A']);
+      drawGridValue(65, y + 23, 'Resultado 3B', candidate['RESULTADO DEFINITIVO 3 B)'] ?? candidate['RESULTADO 3 B)']);
       drawGridValue(110, y + 23, 'Fecha Convocatoria', candidate['FECHA FASE 3']);
       drawGridValue(155, y + 23, 'Hora Convocatoria', candidate['HORA FASE 3A']);
 
@@ -921,7 +924,7 @@ export default function CandidateDetail({ candidate, phase, onClose, onNext, onP
                   <div className="flex justify-between items-center border-b border-dashed border-slate-100 dark:border-zinc-800 pb-1.5">
                     <span className="text-slate-500 dark:text-slate-400">Estado Fase 3A (Inglés)</span>
                     <span className="font-bold">
-                      {candidate['ESTADO PROVISIONAL FASE 3A'] || '-'}
+                      {candidate['ESTADO DEFINITIVO FASE 3A'] ?? candidate['ESTADO PROVISIONAL FASE 3A'] ?? '-'}
                     </span>
                   </div>
                   {candidate['PUNTUACIÓN 3 B)'] !== undefined ? (
@@ -933,7 +936,7 @@ export default function CandidateDetail({ candidate, phase, onClose, onNext, onP
                       <div className="flex justify-between items-center border-b border-dashed border-slate-100 dark:border-zinc-800 pb-1.5">
                         <span className="text-slate-500 dark:text-slate-400">Resultado 3B (Conductual)</span>
                         <span className="font-bold">
-                          {candidate['RESULTADO 3 B)'] || '-'}
+                          {candidate['RESULTADO DEFINITIVO 3 B)'] ?? candidate['RESULTADO 3 B)'] ?? '-'}
                         </span>
                       </div>
                     </>

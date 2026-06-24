@@ -64,9 +64,9 @@ export default function Statistics({ data, phase }: StatisticsProps) {
 
     // Phase 3 Helper
     const isAprobadoF3 = (d: Candidate) => {
-      const s3A = d['ESTADO PROVISIONAL FASE 3A']?.trim().toUpperCase();
-      const s3B = d['RESULTADO 3 B)']?.trim().toUpperCase();
-      const s3C = d['RESULTADO 3 C)']?.trim().toUpperCase();
+      const s3A = (d['ESTADO DEFINITIVO FASE 3A'] ?? d['ESTADO PROVISIONAL FASE 3A'])?.trim().toUpperCase();
+      const s3B = (d['RESULTADO DEFINITIVO 3 B)'] ?? d['RESULTADO 3 B)'])?.trim().toUpperCase();
+      const s3C = (d['RESULTADO DEFINITIVO 3 C)'] ?? d['RESULTADO 3 C)'])?.trim().toUpperCase();
       return s3A === 'APTO/A' && s3B === 'APTO/A' && s3C === 'APTO/A';
     };
 
@@ -148,7 +148,7 @@ export default function Statistics({ data, phase }: StatisticsProps) {
 
     data.forEach(d => {
       const date = d['FECHA FASE 3']?.trim();
-      const resultado3B = d['RESULTADO 3 B)']?.trim().toUpperCase();
+      const resultado3B = (d['RESULTADO DEFINITIVO 3 B)'] ?? d['RESULTADO 3 B)'])?.trim().toUpperCase();
       if (date && !emptyVals.includes(date) && resultado3B === 'APTO/A') {
         if (aptos3BByDate[date] !== undefined) {
           aptos3BByDate[date]++;
@@ -294,7 +294,7 @@ export default function Statistics({ data, phase }: StatisticsProps) {
       const aptosF3Label = phase.id === 'fase3a-prov' ? 'Aptos Fase 3A' : 'Aptos Fase 3';
       const noAptosF3Label = phase.id === 'fase3a-prov' ? 'No Aptos Fase 3A' : 'No Aptos Fase 3';
       const valF3 = phase.id === 'fase3a-prov'
-        ? data.filter(d => d['ESTADO PROVISIONAL FASE 3A']?.trim().toUpperCase() === 'APTO/A').length
+        ? data.filter(d => (d['ESTADO DEFINITIVO FASE 3A'] ?? d['ESTADO PROVISIONAL FASE 3A'])?.trim().toUpperCase() === 'APTO/A').length
         : stats.aprobadosF3;
 
       cols.push({
@@ -808,7 +808,7 @@ export default function Statistics({ data, phase }: StatisticsProps) {
                 </div>
                 <h3 className="text-3xl font-black text-slate-800 dark:text-slate-100">
                   {phase.id === 'fase3a-prov'
-                    ? data.filter(d => d['ESTADO PROVISIONAL FASE 3A']?.trim().toUpperCase() === 'APTO/A').length.toLocaleString('es-ES')
+                    ? data.filter(d => (d['ESTADO DEFINITIVO FASE 3A'] ?? d['ESTADO PROVISIONAL FASE 3A'])?.trim().toUpperCase() === 'APTO/A').length.toLocaleString('es-ES')
                     : stats.aprobadosF3.toLocaleString('es-ES')}
                 </h3>
                 <p className="text-[11px] text-slate-400 mt-1">
@@ -821,7 +821,7 @@ export default function Statistics({ data, phase }: StatisticsProps) {
                 <span>Tasa de Aprobados F3</span>
                 <span className="text-slate-500 dark:text-slate-400">
                   {stats.aprobadosF2 > 0
-                    ? `${(( (phase.id === 'fase3a-prov' ? data.filter(d => d['ESTADO PROVISIONAL FASE 3A']?.trim().toUpperCase() === 'APTO/A').length : stats.aprobadosF3) / stats.aprobadosF2) * 100).toFixed(1)}%`
+                    ? `${(( (phase.id === 'fase3a-prov' ? data.filter(d => (d['ESTADO DEFINITIVO FASE 3A'] ?? d['ESTADO PROVISIONAL FASE 3A'])?.trim().toUpperCase() === 'APTO/A').length : stats.aprobadosF3) / stats.aprobadosF2) * 100).toFixed(1)}%`
                     : '0%'}
                 </span>
               </div>

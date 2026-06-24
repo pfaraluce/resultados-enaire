@@ -120,9 +120,9 @@ export default function App() {
             };
 
             const isAptoFase3 = (item: Candidate) => {
-              const s3A = item['ESTADO PROVISIONAL FASE 3A']?.trim().toUpperCase();
-              const s3B = item['RESULTADO 3 B)']?.trim().toUpperCase();
-              const s3C = item['RESULTADO 3 C)']?.trim().toUpperCase();
+              const s3A = (item['ESTADO DEFINITIVO FASE 3A'] ?? item['ESTADO PROVISIONAL FASE 3A'])?.trim().toUpperCase();
+              const s3B = (item['RESULTADO DEFINITIVO 3 B)'] ?? item['RESULTADO 3 B)'])?.trim().toUpperCase();
+              const s3C = (item['RESULTADO DEFINITIVO 3 C)'] ?? item['RESULTADO 3 C)'])?.trim().toUpperCase();
               return s3A === 'APTO/A' && s3B === 'APTO/A' && s3C === 'APTO/A';
             };
 
@@ -177,7 +177,7 @@ export default function App() {
                   }
                 });
               } else if (detectedPhase.id === 'fase3-prov') {
-                const isAptoF3A = (item: Candidate) => item['ESTADO PROVISIONAL FASE 3A']?.trim().toUpperCase() === 'APTO/A';
+                const isAptoF3A = (item: Candidate) => (item['ESTADO DEFINITIVO FASE 3A'] ?? item['ESTADO PROVISIONAL FASE 3A'])?.trim().toUpperCase() === 'APTO/A';
                 
                 const getScore3A = (item: Candidate) => {
                   const f1f2 = parseScore(item['F1+F2']);

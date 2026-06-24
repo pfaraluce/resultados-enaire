@@ -45,10 +45,12 @@ const FASE_1_COLUMNS: ColumnDef[] = [
   { key: 'HORA FASE 3A', label: 'Hora F3A', group: 'fase3' },
   // Phase 3A columns added:
   { key: 'ESTADO PROVISIONAL FASE 3A', label: 'Estado F3A', group: 'fase3' },
+  { key: 'ESTADO DEFINITIVO FASE 3A', label: 'Estado F3A', group: 'fase3' },
   { key: 'INGLÉS ORAL', label: 'Inglés Oral', group: 'fase3' },
   { key: 'F1+F2+F3A', label: 'Total F1+F2+F3A', group: 'fase3' },
   // Phase 3B and 3C columns added:
   { key: 'RESULTADO 3 B)', label: 'Resultado 3B', group: 'fase3' },
+  { key: 'RESULTADO DEFINITIVO 3 B)', label: 'Resultado 3B', group: 'fase3' },
   { key: 'PUNTUACIÓN 3 B)', label: 'Conductual 3B', group: 'fase3' },
   { key: 'RESULTADO 3 C)', label: 'Resultado 3C', group: 'fase3' },
   { key: 'F1+F2+F3', label: 'Total F1+F2+F3', group: 'fase3' },
@@ -90,43 +92,51 @@ export function detectPhase(headers: string[]): PhaseConfig {
   const isProvisional = hasKeyword(upperHeaders, 'PROVISIONAL');
   const hasFase1 = hasKeyword(upperHeaders, 'FASE 1');
   const hasFase2 = hasKeyword(upperHeaders, 'FASE 2');
-  const hasFase3 = upperHeaders.includes('F1+F2+F3') || upperHeaders.includes('RESULTADO 3 B)') || upperHeaders.includes('PUNTUACIÓN 3 B)') || upperHeaders.includes('RESULTADO 3 C)');
-  const hasFase3A = upperHeaders.includes('F1+F2+F3A') || upperHeaders.includes('ESTADO PROVISIONAL FASE 3A') || upperHeaders.includes('INGLÉS ORAL');
+  const hasFase3 = upperHeaders.includes('F1+F2+F3') || upperHeaders.includes('RESULTADO 3 B)') || upperHeaders.includes('RESULTADO DEFINITIVO 3 B)') || upperHeaders.includes('PUNTUACIÓN 3 B)') || upperHeaders.includes('RESULTADO 3 C)');
+  const hasFase3A = upperHeaders.includes('F1+F2+F3A') || upperHeaders.includes('ESTADO PROVISIONAL FASE 3A') || upperHeaders.includes('ESTADO DEFINITIVO FASE 3A') || upperHeaders.includes('INGLÉS ORAL');
 
-  // 0. FASE 3 - Resultados Definitivos (highest priority, matches F1+F2+F3)
+  // 0. FASE 3 (highest priority, matches F1+F2+F3)
   if (hasFase3) {
+    const isDefinitive = upperHeaders.includes('RESULTADO DEFINITIVO 3 B)') || upperHeaders.includes('ESTADO DEFINITIVO FASE 3A');
+    const statusCol = upperHeaders.includes('RESULTADO DEFINITIVO 3 B)')
+      ? 'RESULTADO DEFINITIVO 3 B)'
+      : 'RESULTADO 3 B)';
+
     return filterByHeaders({
       id: 'fase3-prov',
-      label: 'Fase 3 - Resultados Definitivos',
-      badgeText: 'Fase 3 - Definitivos',
+      label: isDefinitive ? 'Fase 3 - Resultados Definitivos' : 'Fase 3 - Resultados Provisionales',
+      badgeText: isDefinitive ? 'Fase 3 - Definitivos' : 'Fase 3 - Provisional',
       scoreColumn: 'F1+F2+F3',
-      statusColumn: 'RESULTADO 3 B)',
+      statusColumn: statusCol,
       columns: FASE_1_COLUMNS,
       defaultVisibleColumns: [
         'APELLIDOS Y NOMBRE',
         'F1+F2+F3',
         'PUNTUACIÓN 3 B)',
         'INGLÉS ORAL',
-        'RESULTADO 3 B)',
+        statusCol,
         'RESULTADO 3 C)',
       ],
       sortableColumns: ['TOTAL FASE 1', 'TOTAL FASE 2', 'F1+F2', 'F1+F2+F3', 'INGLÉS ORAL', 'PUNTUACIÓN 3 B)', 'CONOCIMIENTOS GENERALES', 'CONOCIMIENTOS IDIOMA INGLÉS', 'APTITUDES'],
     }, headers);
   }
 
-  // 0.5. FASE 3A - Resultados Provisionales (second priority)
+  // 0.5. FASE 3A (second priority)
   if (hasFase3A) {
+    const isDefinitive = upperHeaders.includes('ESTADO DEFINITIVO FASE 3A');
+    const statusCol = isDefinitive ? 'ESTADO DEFINITIVO FASE 3A' : 'ESTADO PROVISIONAL FASE 3A';
+
     return filterByHeaders({
       id: 'fase3a-prov',
-      label: 'Fase 3A - Resultados Provisionales',
-      badgeText: 'Fase 3A - Provisional',
+      label: isDefinitive ? 'Fase 3A - Resultados Definitivos' : 'Fase 3A - Resultados Provisionales',
+      badgeText: isDefinitive ? 'Fase 3A - Definitivos' : 'Fase 3A - Provisional',
       scoreColumn: 'F1+F2+F3A',
-      statusColumn: 'ESTADO PROVISIONAL FASE 3A',
+      statusColumn: statusCol,
       columns: FASE_1_COLUMNS,
       defaultVisibleColumns: [
         'APELLIDOS Y NOMBRE',
         'F1+F2+F3A',
-        'ESTADO PROVISIONAL FASE 3A',
+        statusCol,
         'INGLÉS ORAL',
         'TOTAL FASE 1',
         'TOTAL FASE 2',

@@ -81,9 +81,9 @@ function isEmpty(val: string | undefined, empties: string[]) { return !val || em
 function normalize(str: string) { return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
 
 function getFase3Status(c: Candidate) {
-    const status3A = c['ESTADO PROVISIONAL FASE 3A']?.trim();
-    const status3B = c['RESULTADO 3 B)']?.trim();
-    const status3C = c['RESULTADO 3 C)']?.trim();
+    const status3A = (c['ESTADO DEFINITIVO FASE 3A'] ?? c['ESTADO PROVISIONAL FASE 3A'])?.trim();
+    const status3B = (c['RESULTADO DEFINITIVO 3 B)'] ?? c['RESULTADO 3 B)'])?.trim();
+    const status3C = (c['RESULTADO DEFINITIVO 3 C)'] ?? c['RESULTADO 3 C)'])?.trim();
 
     const u3A = status3A?.toUpperCase() || '';
     const u3B = status3B?.toUpperCase() || '';
@@ -506,7 +506,7 @@ function Fase3View({ data, searchWords, onSelectCandidate }: { data: Candidate[]
 
         data.forEach(d => {
             const date = d['FECHA FASE 3']?.trim();
-            const resultado3B = d['RESULTADO 3 B)']?.trim().toUpperCase();
+            const resultado3B = (d['RESULTADO DEFINITIVO 3 B)'] ?? d['RESULTADO 3 B)'])?.trim().toUpperCase();
             if (date && !emptyVals.includes(date) && resultado3B === 'APTO/A') {
                 if (aptos3BByDate[date] !== undefined) {
                     aptos3BByDate[date]++;
