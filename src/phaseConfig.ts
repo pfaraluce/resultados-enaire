@@ -93,12 +93,12 @@ export function detectPhase(headers: string[]): PhaseConfig {
   const hasFase3 = upperHeaders.includes('F1+F2+F3') || upperHeaders.includes('RESULTADO 3 B)') || upperHeaders.includes('PUNTUACIÓN 3 B)') || upperHeaders.includes('RESULTADO 3 C)');
   const hasFase3A = upperHeaders.includes('F1+F2+F3A') || upperHeaders.includes('ESTADO PROVISIONAL FASE 3A') || upperHeaders.includes('INGLÉS ORAL');
 
-  // 0. FASE 3 - Resultados Provisionales (highest priority, matches F1+F2+F3)
+  // 0. FASE 3 - Resultados Definitivos (highest priority, matches F1+F2+F3)
   if (hasFase3) {
     return filterByHeaders({
       id: 'fase3-prov',
-      label: 'Fase 3 - Resultados Provisionales',
-      badgeText: 'Fase 3 - Provisional',
+      label: 'Fase 3 - Resultados Definitivos',
+      badgeText: 'Fase 3 - Definitivos',
       scoreColumn: 'F1+F2+F3',
       statusColumn: 'RESULTADO 3 B)',
       columns: FASE_1_COLUMNS,
@@ -167,8 +167,8 @@ export function detectPhase(headers: string[]): PhaseConfig {
     if (isProvisional) {
       return filterByHeaders({
         id: 'fase3-prov',
-        label: 'Fase 3 - Resultados Provisionales',
-        badgeText: 'Fase 3 - Provisionales',
+        label: 'Fase 3 - Resultados Definitivos',
+        badgeText: 'Fase 3 - Definitivos',
         scoreColumn: 'TOTAL FASE 3',
         statusColumn: 'ESTADO PROVISIONAL',
         columns: [
